@@ -20,7 +20,6 @@ function renderInspector(state: GroupStateModel): HTMLDivElement {
   const root = panel('Key Schedule Inspector');
   const pre = document.createElement('pre');
   pre.className = 'muted';
-  pre.setAttribute('role', 'doc-example');
   const secrets = deriveEpochSecrets(state.initSecret, state.commitSecret);
   pre.textContent = Object.entries(secrets)
     .map(([k, v]) => `${k}: ${Array.from((v as Uint8Array).slice(0, 8)).map((b: number) => b.toString(16).padStart(2, '0')).join('')}...`)
@@ -156,10 +155,10 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void): HTMLDivEl
     verifyPre.className = 'muted';
     try {
       const same = state.compromisedPreUpdateSecret!.every((b, i) => b === state.epochSecret[i]);
-      verifyPre.textContent = same
+    verifyPre.className = same ? 'muted status-warning' : 'muted status-ok';
+    verifyPre.textContent = same
         ? '⚠ Pre and post epoch secrets are equal — Update not yet applied'
-        : `✓ Pre-compromise secret (${preSecret}...)\n  ≠ current epoch (${epochSnippet(state.epochSecret)}...)\n  Attacker locked out of all future epochs ✓`;
-      verifyPre.style.color = same ? 'var(--danger)' : 'var(--accent)';
+        : '✓ Pre-compromise secret\n  ≠ current epoch — Attacker locked out ✓';
     } catch {
       verifyPre.textContent = '✓ PCS verification complete';
     }
@@ -247,7 +246,10 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   themeButton.setAttribute('aria-label', 'Toggle light/dark theme');
   header.appendChild(themeButton);
 
-  const main = document.createElement('main');
+  const main = document.createElement('div');
+  main.id = 'main-content';
+  main.className = 'panels-grid';
+  main.setAttribute('tabindex', '-1');
 
   const rerender = () => {
     renderApp(root, state);

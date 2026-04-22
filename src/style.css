@@ -88,7 +88,8 @@ h2 {
   font-size: clamp(1rem, 3vw, 1.25rem);
 }
 
-main {
+main,
+.panels-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1rem;
@@ -99,13 +100,15 @@ main {
 }
 
 @media (min-width: 1200px) {
-  main {
+  main,
+  .panels-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  main {
+  main,
+  .panels-grid {
     grid-template-columns: 1fr;
     padding: 0.75rem;
     gap: 0.75rem;
@@ -293,7 +296,8 @@ small,
     align-items: stretch;
   }
   
-  .row > span {
+  .row > span,
+  .row > label {
     font-weight: 600;
     font-size: 0.95rem;
   }
@@ -398,6 +402,14 @@ pre {
   border-radius: 6px;
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+.status-warning {
+  color: var(--danger);
+}
+
+.status-ok {
+  color: var(--accent);
 }
 
 .scripture-footer {

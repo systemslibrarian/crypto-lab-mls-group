@@ -27,7 +27,7 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
     const inputId = `msg-input-leaf-${leaf}`;
 
     const label = document.createElement('label');
-    label.textContent = `Leaf ${leaf}`;
+    label.textContent = `Leaf ${leaf} — message`;
     label.htmlFor = inputId;
     label.className = 'leaf-label';
 
@@ -50,7 +50,6 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
     input.type = 'text';
     input.id = inputId;
     input.placeholder = 'message content...';
-    input.setAttribute('aria-label', `Message input for leaf ${leaf}`);
 
     const send = document.createElement('button');
     send.textContent = '📤 Send';
