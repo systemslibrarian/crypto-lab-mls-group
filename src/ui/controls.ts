@@ -6,7 +6,7 @@ export interface ControlsHandlers {
   onAdd: () => MaybePromise<void>;
   onRemove: (leaf: number) => MaybePromise<void>;
   onCommit: (leaf: number) => MaybePromise<void>;
-  onSend: (leaf: number, text: string) => void;
+  onSend: (leaf: number, text: string) => MaybePromise<void>;
 }
 
 export function renderMemberControls(state: GroupStateModel, handlers: ControlsHandlers): HTMLDivElement {
@@ -56,7 +56,7 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
     send.textContent = '📤 Send';
     send.setAttribute('aria-label', `Send message from leaf ${leaf}`);
     send.onclick = () => {
-      handlers.onSend(leaf, input.value || `hello from ${leaf}`);
+      void Promise.resolve(handlers.onSend(leaf, input.value || `hello from ${leaf}`));
       input.value = '';
     };
 

@@ -21,6 +21,12 @@ export function renderTranscriptPanel(entries: TranscriptEntry[]): HTMLDivElemen
       tag.textContent = `AEAD tag: ${item.tag}`;
       row.appendChild(tag);
     }
+    if (item.ciphertext) {
+      const ct = document.createElement('small');
+      ct.textContent = `ciphertext: ${item.ciphertext}`;
+      ct.style.display = 'block';
+      row.appendChild(ct);
+    }
     root.appendChild(row);
   }
 

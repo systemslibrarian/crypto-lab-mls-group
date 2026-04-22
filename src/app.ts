@@ -248,10 +248,10 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
         await commitWithProposals(state, [{ type: 'add' }], 0);
         rerender();
       }),
-      onSend: (member: number, text: string) => {
-        state.sendApplication(member, text);
+      onSend: (member: number, text: string) => guard(async () => {
+        await state.sendApplication(member, text);
         rerender();
-      }
+      })
     })
   );
 
