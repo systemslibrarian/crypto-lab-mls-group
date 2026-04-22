@@ -5,12 +5,9 @@ import { renderMemberControls } from './ui/controls';
 import { deriveEpochSecrets } from './group/key-schedule';
 import { commitWithProposals } from './proposals/commit';
 
-function panel(title: string, ariaLabel?: string): HTMLElement {
+function panel(title: string): HTMLElement {
   const el = document.createElement('section');
   el.className = 'panel';
-  if (ariaLabel) {
-    el.setAttribute('aria-label', ariaLabel);
-  }
   const h = document.createElement('h2');
   h.id = `panel-${title.toLowerCase().replace(/\s+/g, '-')}`;
   h.textContent = title;
@@ -20,11 +17,11 @@ function panel(title: string, ariaLabel?: string): HTMLElement {
 }
 
 function renderInspector(state: GroupStateModel): HTMLDivElement {
-  const root = panel('Key Schedule Inspector', 'Current cryptographic key derivation state showing epoch and commit secrets');
+  const root = panel('Key Schedule Inspector');
   const pre = document.createElement('pre');
   pre.className = 'muted';
   pre.setAttribute('role', 'doc-example');
-  const secrets = deriveEpochSecrets(state.epochSecret, state.commitSecret);
+  const secrets = deriveEpochSecrets(state.initSecret, state.commitSecret);
   pre.textContent = Object.entries(secrets)
     .map(([k, v]) => `${k}: ${Array.from((v as Uint8Array).slice(0, 8)).map((b: number) => b.toString(16).padStart(2, '0')).join('')}...`)
     .join('\n');
@@ -33,7 +30,7 @@ function renderInspector(state: GroupStateModel): HTMLDivElement {
 }
 
 function renderExplainer(): HTMLDivElement {
-  const root = panel('Explainer');
+  const root = panel('Explainer') as HTMLDivElement;
   root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a compromise, any new Update commit on a direct path restores secrecy for future epochs.</p></details>`;
   root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch rotates key schedule outputs so old messages remain protected against future key disclosure.</p></details>`;
   root.innerHTML += `<details><summary>MLS vs Double Ratchet at scale</summary><p>MLS uses TreeKEM over a ratchet tree, reducing group update overhead from quadratic broadcasts to logarithmic path updates.</p></details>`;
@@ -46,19 +43,26 @@ function renderExplainer(): HTMLDivElement {
 }
 
 function renderComparisonPanel(): HTMLDivElement {
-  const root = panel('Comparison Panel', 'RFC 9420 MLS versus other messaging protocols');
+  const root = panel('Comparison Panel') as HTMLDivElement;
+  const caption = document.createElement('caption');
+  caption.textContent = 'X3DH + Double Ratchet vs MLS (RFC 9420)';
+
   const table = document.createElement('table');
   table.className = 'table';
-  table.setAttribute('role', 'presentation');
-  
-  const headerRow = table.insertRow();
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
   ['Property', 'X3DH + Double Ratchet', 'MLS'].forEach(text => {
     const th = document.createElement('th');
     th.scope = 'col';
     th.textContent = text;
     headerRow.appendChild(th);
   });
+  thead.appendChild(headerRow);
+  table.appendChild(caption);
+  table.appendChild(thead);
 
+  const tbody = document.createElement('tbody');
   const rows = [
     ['Group size scaling', 'Pairwise mesh', 'TreeKEM left-balanced tree'],
     ['Broadcast cost', 'O(n²) sender work', 'O(log n) path update'],
@@ -70,25 +74,27 @@ function renderComparisonPanel(): HTMLDivElement {
   ];
 
   for (const [prop, x3dh, mls] of rows) {
-    const row = table.insertRow();
+    const row = tbody.insertRow();
     const propCell = document.createElement('th');
     propCell.scope = 'row';
     propCell.textContent = prop;
     row.appendChild(propCell);
-    
     const x3dhCell = row.insertCell();
     x3dhCell.textContent = x3dh;
-    
     const mlsCell = row.insertCell();
     mlsCell.innerHTML = mls;
   }
 
-  root.appendChild(table);
-  return root as HTMLDivElement;
+  table.appendChild(tbody);
+  const scrollWrapper = document.createElement('div');
+  scrollWrapper.className = 'table-scroll';
+  scrollWrapper.appendChild(table);
+  root.appendChild(scrollWrapper);
+  return root;
 }
 
 function renderPcsPanel(state: GroupStateModel, rerender: () => void): HTMLDivElement {
-  const root = panel('PCS Recovery Walkthrough', 'Post-compromise security demonstration — mark a leaf compromised, recover via Update, verify old material is locked out');
+  const root = panel('PCS Recovery Walkthrough') as HTMLDivElement;
   const epochSnippet = (s: Uint8Array) => Array.from(s.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join('');
   const isCompromised = state.compromisedPreUpdateSecret !== null;
 
@@ -164,7 +170,7 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void): HTMLDivEl
 }
 
 function renderScenarioPanel(state: GroupStateModel, rerender: () => void): HTMLDivElement {
-  const root = panel('Scenario Presets', 'Pre-configured scenarios to demonstrate MLS functionality');
+  const root = panel('Scenario Presets') as HTMLDivElement;
   const row = document.createElement('div');
   row.className = 'row';
 
@@ -191,6 +197,8 @@ function renderScenarioPanel(state: GroupStateModel, rerender: () => void): HTML
 }
 
 export function renderApp(root: HTMLDivElement, state: GroupStateModel = createInitialGroupState()): { themeButton: HTMLButtonElement } {
+  const previousFocusId = (document.activeElement as HTMLElement | null)?.id ?? null;
+  let busy = false;
 
   root.innerHTML = '';
   const header = document.createElement('header');
@@ -214,25 +222,32 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
     renderApp(root, state);
   };
 
-  const tree = panel('Tree', 'Left-balanced binary TreeKEM structure showing group membership');
+  const guard = async (fn: () => Promise<void>): Promise<void> => {
+    if (busy) return;
+    busy = true;
+    try { await fn(); } finally { busy = false; }
+  };
+
+  const tree = panel('Tree');
   tree.appendChild(renderTreePanel(state));
-  const transcript = panel('Transcript', 'Chronological log of group events and message history');
+  const transcript = panel('Transcript');
   transcript.appendChild(renderTranscriptPanel(state.transcript));
-  const controls = panel('Member Controls', 'Interactive controls for group members to perform updates and send messages');
+  const controls = panel('Member Controls');
   controls.appendChild(
     renderMemberControls(state, {
-      onCommit: async (member: number) => {
+      onCommit: (member: number) => guard(async () => {
         await commitWithProposals(state, [{ type: 'update', leafIndex: member }], member);
         rerender();
-      },
-      onRemove: async (member: number) => {
-        await commitWithProposals(state, [{ type: 'remove', leafIndex: member }], 0);
+      }),
+      onRemove: (member: number) => guard(async () => {
+        const committer = state.tree.leaves.find((l) => l !== member && !state.tree.nodes.get(l)?.blank) ?? member;
+        await commitWithProposals(state, [{ type: 'remove', leafIndex: member }], committer);
         rerender();
-      },
-      onAdd: async () => {
+      }),
+      onAdd: () => guard(async () => {
         await commitWithProposals(state, [{ type: 'add' }], 0);
         rerender();
-      },
+      }),
       onSend: (member: number, text: string) => {
         state.sendApplication(member, text);
         rerender();
@@ -251,6 +266,13 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
 
   root.appendChild(header);
   root.appendChild(main);
+
+  if (previousFocusId) {
+    const toRefocus = document.getElementById(previousFocusId);
+    if (toRefocus) {
+      toRefocus.focus({ preventScroll: true });
+    }
+  }
 
   return { themeButton };
 }

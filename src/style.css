@@ -281,6 +281,12 @@ small,
   align-items: center;
 }
 
+.leaf-label {
+  font-weight: 600;
+  min-width: 3.5rem;
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
   .row {
     flex-direction: column;
@@ -296,6 +302,11 @@ small,
   .row > input {
     width: 100%;
   }
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {

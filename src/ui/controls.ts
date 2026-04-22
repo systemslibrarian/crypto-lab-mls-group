@@ -24,9 +24,12 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
   for (const leaf of state.tree.leaves) {
     const row = document.createElement('div');
     row.className = 'row';
+    const inputId = `msg-input-leaf-${leaf}`;
 
-    const label = document.createElement('span');
+    const label = document.createElement('label');
     label.textContent = `Leaf ${leaf}`;
+    label.htmlFor = inputId;
+    label.className = 'leaf-label';
 
     const remove = document.createElement('button');
     remove.className = 'danger';
@@ -45,6 +48,7 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
 
     const input = document.createElement('input');
     input.type = 'text';
+    input.id = inputId;
     input.placeholder = 'message content...';
     input.setAttribute('aria-label', `Message input for leaf ${leaf}`);
 

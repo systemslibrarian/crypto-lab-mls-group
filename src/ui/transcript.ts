@@ -3,6 +3,9 @@ import { TranscriptEntry } from '../group/group-state';
 export function renderTranscriptPanel(entries: TranscriptEntry[]): HTMLDivElement {
   const root = document.createElement('div');
   root.className = 'transcript-list';
+  root.setAttribute('aria-live', 'polite');
+  root.setAttribute('aria-label', 'Protocol event transcript');
+  root.setAttribute('aria-relevant', 'additions');
 
   for (const item of entries) {
     const row = document.createElement('article');
