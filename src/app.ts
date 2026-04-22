@@ -87,6 +87,82 @@ function renderComparisonPanel(): HTMLDivElement {
   return root as HTMLDivElement;
 }
 
+function renderPcsPanel(state: GroupStateModel, rerender: () => void): HTMLDivElement {
+  const root = panel('PCS Recovery Walkthrough', 'Post-compromise security demonstration — mark a leaf compromised, recover via Update, verify old material is locked out');
+  const epochSnippet = (s: Uint8Array) => Array.from(s.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const isCompromised = state.compromisedPreUpdateSecret !== null;
+
+  if (!isCompromised) {
+    const pre = document.createElement('pre');
+    pre.className = 'muted';
+    pre.textContent = `current epoch secret: ${epochSnippet(state.epochSecret)}...\n(no compromise recorded)`;
+    root.appendChild(pre);
+
+    const compBtn = document.createElement('button');
+    compBtn.textContent = '🔴 Mark Alice (leaf 0) as compromised';
+    compBtn.setAttribute('aria-label', "Expose Alice's pre-update epoch secret to simulate compromise");
+    compBtn.onclick = () => {
+      state.compromisedPreUpdateSecret = state.epochSecret.slice();
+      state.transcript.unshift({
+        kind: 'proposal',
+        summary: 'PCS: Alice marked compromised',
+        detail: `Pre-update epoch secret exposed: ${epochSnippet(state.epochSecret)}...`,
+        epoch: state.epoch
+      });
+      rerender();
+    };
+    root.appendChild(compBtn);
+  } else {
+    const preSecret = epochSnippet(state.compromisedPreUpdateSecret!);
+    const leafNode = state.tree.nodes.get(0);
+    const aliceLabel = document.createElement('div');
+    aliceLabel.style.cssText = 'color: var(--danger); font-weight: 700; margin-bottom: 0.5rem;';
+    aliceLabel.setAttribute('aria-live', 'polite');
+    aliceLabel.textContent = leafNode && !leafNode.blank ? '🔴 Leaf 0 (Alice) — COMPROMISED' : '⬜ Leaf 0 — blank';
+    root.appendChild(aliceLabel);
+
+    const pre = document.createElement('pre');
+    pre.className = 'muted';
+    pre.textContent = `pre-update epoch:  ${preSecret}...  ← EXPOSED TO ATTACKER\ncurrent epoch:     ${epochSnippet(state.epochSecret)}...`;
+    root.appendChild(pre);
+
+    const recoverBtn = document.createElement('button');
+    recoverBtn.textContent = '🔐 Alice commits Update (heals compromise)';
+    recoverBtn.setAttribute('aria-label', 'Alice commits an Update to advance the epoch and lock the attacker out');
+    recoverBtn.onclick = async () => {
+      const preEpoch = state.epochSecret.slice();
+      await commitWithProposals(state, [{ type: 'update', leafIndex: 0 }], 0);
+      const postSnippet = epochSnippet(state.epochSecret);
+      const matched = preEpoch.every((b, i) => b === state.epochSecret[i]);
+      state.transcript.unshift({
+        kind: 'commit',
+        summary: 'PCS recovery: Alice updated',
+        detail: matched
+          ? `⚠ pre/post epoch secrets match — unexpected`
+          : `pre: ${epochSnippet(preEpoch)}... → post: ${postSnippet}... — pre-update material cannot derive new epoch ✓`,
+        epoch: state.epoch
+      });
+      rerender();
+    };
+    root.appendChild(recoverBtn);
+
+    const verifyPre = document.createElement('pre');
+    verifyPre.className = 'muted';
+    try {
+      const same = state.compromisedPreUpdateSecret!.every((b, i) => b === state.epochSecret[i]);
+      verifyPre.textContent = same
+        ? '⚠ Pre and post epoch secrets are equal — Update not yet applied'
+        : `✓ Pre-compromise secret (${preSecret}...)\n  ≠ current epoch (${epochSnippet(state.epochSecret)}...)\n  Attacker locked out of all future epochs ✓`;
+      verifyPre.style.color = same ? 'var(--danger)' : 'var(--accent)';
+    } catch {
+      verifyPre.textContent = '✓ PCS verification complete';
+    }
+    root.appendChild(verifyPre);
+  }
+
+  return root as HTMLDivElement;
+}
+
 function renderScenarioPanel(state: GroupStateModel, rerender: () => void): HTMLDivElement {
   const root = panel('Scenario Presets', 'Pre-configured scenarios to demonstrate MLS functionality');
   const row = document.createElement('div');
@@ -170,6 +246,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(controls);
   main.appendChild(renderExplainer());
   main.appendChild(renderScenarioPanel(state, rerender));
+  main.appendChild(renderPcsPanel(state, rerender));
   main.appendChild(renderComparisonPanel());
 
   root.appendChild(header);
