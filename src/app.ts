@@ -169,26 +169,57 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void): HTMLDivEl
   return root as HTMLDivElement;
 }
 
-function renderScenarioPanel(state: GroupStateModel, rerender: () => void): HTMLDivElement {
+function renderScenarioPanel(state: GroupStateModel, rerender: () => void, guard: (fn: () => Promise<void>) => Promise<void>): HTMLDivElement {
   const root = panel('Scenario Presets') as HTMLDivElement;
   const row = document.createElement('div');
   row.className = 'row';
 
-  const presets: Array<[string, () => void]> = [
-    ['3 → 4 members', () => state.seedScenario('add-dave')],
-    ['Remove a member', () => state.seedScenario('remove-bob')],
-    ['PCS recovery', () => state.seedScenario('pcs')],
-    ['Churn drill', () => state.seedScenario('churn')]
+  // All presets perform real crypto operations
+  const presets: Array<[string, string, () => Promise<void>]> = [
+    [
+      '3 → 4 members',
+      'Alice/Bob/Charlie bootstrap, Alice adds Dave',
+      async () => {
+        await commitWithProposals(state, [{ type: 'add' }], 0);
+        rerender();
+      }
+    ],
+    [
+      'Remove a member',
+      'Remove leaf 2 (Bob), direct path blanked',
+      async () => {
+        const bobLeaf = state.tree.leaves[1] ?? 2;
+        const committer = state.tree.leaves.find((l) => l !== bobLeaf && !state.tree.nodes.get(l)?.blank) ?? 0;
+        await commitWithProposals(state, [{ type: 'remove', leafIndex: bobLeaf }], committer);
+        rerender();
+      }
+    ],
+    [
+      'PCS recovery',
+      'Mark Alice compromised, then she commits an Update',
+      async () => {
+        state.seedPcsCompromise();
+        rerender();
+      }
+    ],
+    [
+      'Churn drill (5×)',
+      '5 real Update commits from leaf 0, epoch advances each time',
+      async () => {
+        for (let i = 0; i < 5; i++) {
+          await commitWithProposals(state, [{ type: 'update', leafIndex: 0 }], 0);
+        }
+        rerender();
+      }
+    ]
   ];
 
-  for (const [label, fn] of presets) {
+  for (const [label, description, fn] of presets) {
     const b = document.createElement('button');
     b.textContent = label;
-    b.setAttribute('aria-label', `Load scenario: ${label}`);
-    b.onclick = () => {
-      fn();
-      rerender();
-    };
+    b.setAttribute('aria-label', `Scenario: ${description}`);
+    b.title = description;
+    b.onclick = () => { void guard(fn); };
     row.appendChild(b);
   }
 
@@ -260,7 +291,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(renderInspector(state));
   main.appendChild(controls);
   main.appendChild(renderExplainer());
-  main.appendChild(renderScenarioPanel(state, rerender));
+  main.appendChild(renderScenarioPanel(state, rerender, guard));
   main.appendChild(renderPcsPanel(state, rerender));
   main.appendChild(renderComparisonPanel());
 

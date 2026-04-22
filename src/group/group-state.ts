@@ -14,7 +14,6 @@ export interface TranscriptEntry {
   ciphertext?: string;
 }
 
-export type ScenarioId = 'add-dave' | 'remove-bob' | 'pcs' | 'churn';
 
 interface SenderRatchet {
   handshakeGeneration: number;
@@ -63,6 +62,7 @@ export class GroupStateModel {
   confirmedTranscriptHash = new Uint8Array(32);
   interimTranscriptHash = new Uint8Array(32);
   compromisedPreUpdateSecret: Uint8Array | null = null;
+  lastCommitterLeaf: number | null = null;
   ratchets = new Map<number, SenderRatchet>();
 
   constructor(tree: RatchetTree) {
@@ -111,30 +111,18 @@ export class GroupStateModel {
     });
   }
 
-  seedScenario(id: ScenarioId): void {
-    if (id === 'add-dave') {
-      this.transcript.unshift({ kind: 'proposal', summary: 'Preset: add Dave', detail: 'Alice/Bob/Charlie then add Dave', epoch: this.epoch });
-      return;
-    }
-
-    if (id === 'remove-bob') {
-      this.transcript.unshift({ kind: 'proposal', summary: 'Preset: remove Bob', detail: '5-member group, Bob removed, direct path blanked', epoch: this.epoch });
-      return;
-    }
-
-    if (id === 'pcs') {
-      this.compromisedPreUpdateSecret = this.epochSecret.slice();
-      this.transcript.unshift({ kind: 'proposal', summary: 'Preset: PCS recovery', detail: 'Alice compromised then updates direct path', epoch: this.epoch });
-      return;
-    }
-
-    for (let i = 0; i < 20; i += 1) {
-      this.epoch += 1;
-      this.transcript.unshift({ kind: 'commit', summary: `Churn commit #${i + 1}`, detail: 'Rapid add/remove/update cycle', epoch: this.epoch });
-    }
+  seedPcsCompromise(): void {
+    this.compromisedPreUpdateSecret = this.epochSecret.slice();
+    this.transcript.unshift({
+      kind: 'proposal',
+      summary: 'PCS: Alice marked compromised',
+      detail: `Pre-update epoch secret captured: ${Array.from(this.epochSecret.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join('')}...`,
+      epoch: this.epoch
+    });
   }
 
-  advanceEpoch(newCommitSecret: Uint8Array): void {
+  advanceEpoch(newCommitSecret: Uint8Array, committerLeaf?: number): void {
+    this.lastCommitterLeaf = committerLeaf ?? null;
     this.commitSecret = newCommitSecret;
     const secrets = deriveEpochSecrets(this.initSecret, this.commitSecret);
     this.epochSecret = secrets.epoch;

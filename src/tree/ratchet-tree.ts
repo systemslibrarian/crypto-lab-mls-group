@@ -89,7 +89,7 @@ export class RatchetTree {
 
     const leafIndex = this.nodeWidth() + 1;
     this.leaves.push(leafIndex);
-    for (let i = 0; i <= this.nodeWidth(); i += 1) {
+    for (let i = 0; i < this.nodeWidth(); i += 1) {
       if (!this.nodes.has(i)) {
         this.nodes.set(i, { index: i, blank: true });
       }
@@ -141,9 +141,17 @@ export class RatchetTree {
   }
 
   parent(x: number): number | null {
-    const k = this.level(x);
-    const p = (x | (1 << k)) & ~(1 << (k + 1));
-    if (p >= this.nodeWidth() || p < 0 || p === x) {
+    const width = this.nodeWidth();
+    let k = this.level(x);
+    let b = 1 << k;
+    let p = (x | b) & ~(b << 1);
+    // In a left-balanced tree the "natural" formula can land out of range;
+    // walk up until we find a valid ancestor (RFC 9420 §8 tree arithmetic).
+    while (p >= width && b <= width) {
+      b <<= 1;
+      p = (p | b) & ~(b << 1);
+    }
+    if (p >= width || p < 0 || p === x) {
       return null;
     }
     return p;

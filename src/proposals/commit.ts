@@ -42,7 +42,7 @@ export async function commitWithProposals(state: GroupStateModel, proposals: Pro
   const committerCommitSecret = await applyUpdate(state, committerLeaf);
   commitSecret = committerCommitSecret;
 
-  state.advanceEpoch(commitSecret);
+  state.advanceEpoch(commitSecret, committerLeaf);
   void state.updateTranscriptHashes(`commit:${state.epoch}:${committerLeaf}`);
   state.transcript.unshift({
     kind: 'commit',
