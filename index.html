@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Interactive MLS group messaging demonstration with TreeKEM, cryptographic key schedule, and real X25519/AES-GCM operations" />
+    <meta name="theme-color" content="#0f1724" />
+    <meta name="color-scheme" content="dark light" />
+    <title>MLS Group Lab - RFC 9420 Interactive Demo</title>
+    <script>
+      (function () {
+        const saved = localStorage.getItem('theme');
+        document.documentElement.setAttribute('data-theme', saved ?? 'dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <main id="app" role="main" aria-label="MLS Group Lab Interactive Demo"></main>
+    <script type="module" src="/src/main.ts"><\/script>
+    <footer class="scripture-footer" role="contentinfo">
+      <p>So whether you eat or drink or whatever you do, do it all for the glory of God. — 1 Corinthians 10:31</p>
+    </footer>
+  </body>
+</html>
