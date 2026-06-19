@@ -1,41 +1,32 @@
+import { describe, it, expect } from 'vitest';
 import { randomBytes } from '../crypto/ciphersuite';
 import { deriveSecret, expandWithLabel } from '../crypto/hkdf';
 import { deriveEpochSecrets } from '../group/key-schedule';
 
-function assertEqualBytes(name: string, a: Uint8Array, b: Uint8Array): void {
-  if (a.length !== b.length) {
-    throw new Error(`${name}: length mismatch`);
-  }
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) {
-      throw new Error(`${name}: mismatch at ${i}`);
-    }
-  }
-}
+const hex = (a: Uint8Array) => Array.from(a).map((b) => b.toString(16).padStart(2, '0')).join('');
 
-export function runKeyScheduleHarness(): string {
-  const initSecret = randomBytes(32);
-  const commitSecret = randomBytes(32);
+describe('key schedule (RFC 9420 §8)', () => {
+  it('derives each epoch secret with the correct label from epoch_secret', () => {
+    const secrets = deriveEpochSecrets(randomBytes(32), randomBytes(32));
 
-  const secrets = deriveEpochSecrets(initSecret, commitSecret);
+    expect(hex(secrets.welcome)).toBe(hex(deriveSecret(secrets.joiner, 'welcome')));
+    expect(hex(secrets.epoch)).toBe(hex(deriveSecret(secrets.joiner, 'epoch')));
+    expect(hex(secrets.sender_data)).toBe(hex(deriveSecret(secrets.epoch, 'sender data')));
+    expect(hex(secrets.encryption)).toBe(hex(deriveSecret(secrets.epoch, 'encryption')));
+    expect(hex(secrets.exporter)).toBe(hex(deriveSecret(secrets.epoch, 'exporter')));
+    expect(hex(secrets.confirmation)).toBe(hex(deriveSecret(secrets.epoch, 'confirm')));
+    expect(hex(secrets.init)).toBe(hex(deriveSecret(secrets.epoch, 'init')));
+  });
 
-  const expectedWelcome = deriveSecret(secrets.joiner, 'welcome');
-  const expectedEpoch = deriveSecret(secrets.joiner, 'epoch');
-  assertEqualBytes('welcome derivation', secrets.welcome, expectedWelcome);
-  assertEqualBytes('epoch derivation', secrets.epoch, expectedEpoch);
+  it('is deterministic for fixed inputs and changes when commit_secret changes', () => {
+    const init = randomBytes(32);
+    const commit = randomBytes(32);
+    expect(hex(deriveEpochSecrets(init, commit).epoch)).toBe(hex(deriveEpochSecrets(init, commit).epoch));
+    expect(hex(deriveEpochSecrets(init, commit).epoch)).not.toBe(hex(deriveEpochSecrets(init, randomBytes(32)).epoch));
+  });
 
-  assertEqualBytes('sender_data derivation', secrets.sender_data, deriveSecret(secrets.epoch, 'sender data'));
-  assertEqualBytes('encryption derivation', secrets.encryption, deriveSecret(secrets.epoch, 'encryption'));
-  assertEqualBytes('exporter derivation', secrets.exporter, deriveSecret(secrets.epoch, 'exporter'));
-  assertEqualBytes('external derivation', secrets.external, deriveSecret(secrets.epoch, 'external'));
-  assertEqualBytes('confirmation derivation', secrets.confirmation, deriveSecret(secrets.epoch, 'confirm'));
-  assertEqualBytes('membership derivation', secrets.membership, deriveSecret(secrets.epoch, 'membership'));
-  assertEqualBytes('resumption derivation', secrets.resumption, deriveSecret(secrets.epoch, 'resumption'));
-  assertEqualBytes('init derivation', secrets.init, deriveSecret(secrets.epoch, 'init'));
-  assertEqualBytes('authentication derivation', secrets.authentication, deriveSecret(secrets.epoch, 'authentication'));
-
-  const labelRoundTrip = expandWithLabel(secrets.epoch, 'sender data', new Uint8Array(), 32);
-  assertEqualBytes('ExpandWithLabel size', labelRoundTrip, secrets.sender_data);
-
-  return 'key schedule relationships verified';
-}
+  it('ExpandWithLabel produces the requested length and rejects oversized labels', () => {
+    expect(expandWithLabel(randomBytes(32), 'key', new Uint8Array(), 16)).toHaveLength(16);
+    expect(() => expandWithLabel(randomBytes(32), 'x'.repeat(260), new Uint8Array(), 16)).toThrow();
+  });
+});

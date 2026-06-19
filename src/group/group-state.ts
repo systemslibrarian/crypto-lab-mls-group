@@ -1,6 +1,7 @@
 import { randomBytes, sha256Digest, utf8, u16be } from '../crypto/ciphersuite';
 import { deriveSecret, expandWithLabel } from '../crypto/hkdf';
-import { deriveEpochSecrets } from './key-schedule';
+import { deriveEpochSecrets, EpochSecrets } from './key-schedule';
+import { memberName } from './members';
 import { RatchetTree } from '../tree/ratchet-tree';
 
 export interface TranscriptEntry {
@@ -12,6 +13,14 @@ export interface TranscriptEntry {
   senderLeaf?: number;
   tag?: string;
   ciphertext?: string;
+}
+
+// Plain-English explanation of the most recent action, shown prominently so a
+// newcomer always knows what just happened and why it matters.
+export interface Narration {
+  headline: string;
+  lines: string[];
+  tone: 'info' | 'success' | 'danger';
 }
 
 
@@ -64,10 +73,42 @@ export class GroupStateModel {
   compromisedPreUpdateSecret: Uint8Array | null = null;
   lastCommitterLeaf: number | null = null;
   ratchets = new Map<number, SenderRatchet>();
+  narration: Narration | null = null;
+  // Forward-secrecy demo: a per-message key captured in some epoch, kept so we
+  // can show it can no longer be re-derived after the epoch advances.
+  fsSnapshot: { epoch: number; leaf: number; encHex: string; msgKeyHex: string } | null = null;
+  // Guided-tour position (inactive until the user starts it).
+  tour: { active: boolean; step: number } = { active: false, step: 0 };
+  // The encryption_secret a member knew in the epoch they were removed in — kept
+  // so the access-control demo can show they can no longer read new messages.
+  removedSnapshot: { leaf: number; epoch: number; encryptionSecret: Uint8Array } | null = null;
+  // Latest convergence-proof result (which members derived which root secret).
+  convergence: { committerLeaf: number; rows: Array<{ leaf: number; isCommitter: boolean; viaDecrypt: boolean; hex: string; match: boolean }> } | null = null;
+  // Latest access-control demo result.
+  accessResult: {
+    epoch: number; senderLeaf: number; ctHex: string;
+    legitLeaf: number; legitText: string | null;
+    removedLeaf: number; removedText: string | null;
+  } | null = null;
+  // Epoch the UI was last rendered at — used to fire transition animations only
+  // when the epoch actually advanced (set to current epoch at construction so
+  // the first render is static).
+  animEpoch = 0;
+  // The two inputs that produced the current epoch's secrets, and the full set
+  // of derived secrets — stored so the inspector shows the real, live values.
+  epochInputs: { init: Uint8Array; commit: Uint8Array };
+  epochSecrets: EpochSecrets;
+
+  activeMembers(): number[] {
+    return this.tree.leaves.filter((l) => !this.tree.nodes.get(l)?.blank);
+  }
 
   constructor(tree: RatchetTree) {
     this.tree = tree;
-    const encryptionSecret = deriveSecret(this.epochSecret, 'encryption');
+    this.epochInputs = { init: this.initSecret.slice(), commit: this.commitSecret.slice() };
+    this.epochSecrets = deriveEpochSecrets(this.initSecret, this.commitSecret);
+    this.epochSecret = this.epochSecrets.epoch;
+    const encryptionSecret = this.epochSecrets.encryption;
     for (const leaf of tree.leaves) {
       this.ratchets.set(leaf, seedRatchet(encryptionSecret, leaf));
     }
@@ -101,7 +142,7 @@ export class GroupStateModel {
 
     this.transcript.unshift({
       kind: 'application',
-      summary: `msg from leaf ${senderLeaf}`,
+      summary: `${memberName(senderLeaf)} → group`,
       detail: text,
       epoch: this.epoch,
       generation: ratchet.appGeneration,
@@ -115,7 +156,7 @@ export class GroupStateModel {
     this.compromisedPreUpdateSecret = this.epochSecret.slice();
     this.transcript.unshift({
       kind: 'proposal',
-      summary: 'PCS: Alice marked compromised',
+      summary: `PCS: ${memberName(0)} marked compromised`,
       detail: `Pre-update epoch secret captured: ${Array.from(this.epochSecret.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join('')}...`,
       epoch: this.epoch
     });
@@ -124,9 +165,13 @@ export class GroupStateModel {
   advanceEpoch(newCommitSecret: Uint8Array, committerLeaf?: number): void {
     this.lastCommitterLeaf = committerLeaf ?? null;
     this.commitSecret = newCommitSecret;
+    // The current init_secret (carried from the previous epoch) and this commit's
+    // commit_secret are the two inputs to the new epoch's key schedule.
+    this.epochInputs = { init: this.initSecret.slice(), commit: this.commitSecret.slice() };
     const secrets = deriveEpochSecrets(this.initSecret, this.commitSecret);
+    this.epochSecrets = secrets;
     this.epochSecret = secrets.epoch;
-    this.initSecret = secrets.init;
+    this.initSecret = secrets.init; // carried forward to seed the next epoch
     this.epoch += 1;
     // Reseed all ratchets from the new epoch's encryption_secret (RFC 9420 §15.2)
     const encryptionSecret = secrets.encryption;

@@ -60,6 +60,41 @@ export async function generateUpdatePath(tree: RatchetTree, senderLeafIndex: num
   return { senderLeafIndex, nodes, commitSecret: currentPathSecret };
 }
 
+export interface ConvergenceRow {
+  leaf: number;
+  isCommitter: boolean;
+  viaDecrypt: boolean;
+  secret: Uint8Array;
+}
+
+// Teaching helper: prove the core TreeKEM invariant. The committer generates a
+// fresh path; every other member then independently recovers the SAME root
+// secret — the committer by ratcheting up their direct path, the others by HPKE-
+// decrypting exactly one path secret and ratcheting the rest of the way. Runs
+// entirely on clones so it never mutates live group state.
+export async function deriveConvergence(
+  tree: RatchetTree,
+  committerLeaf: number,
+  pathSecret: Uint8Array
+): Promise<{ committerSecret: Uint8Array; rows: ConvergenceRow[] }> {
+  const updatePath = await generateUpdatePath(tree, committerLeaf, pathSecret);
+  const committerSecret = updatePath.commitSecret;
+  const rows: ConvergenceRow[] = [];
+
+  for (const leaf of tree.leaves) {
+    if (tree.nodes.get(leaf)?.blank) continue;
+    if (leaf === committerLeaf) {
+      rows.push({ leaf, isCommitter: true, viaDecrypt: false, secret: committerSecret });
+      continue;
+    }
+    const overlap = updatePath.nodes.some((n) => n.encryptedPathSecrets.some((c) => c.receiverLeaf === leaf));
+    const secret = await applyUpdatePath(tree.clone(), updatePath, leaf);
+    rows.push({ leaf, isCommitter: false, viaDecrypt: overlap, secret });
+  }
+
+  return { committerSecret, rows };
+}
+
 export async function applyUpdatePath(tree: RatchetTree, updatePath: TreeKemUpdatePath, receiverLeafIndex: number): Promise<Uint8Array> {
   const overlap = updatePath.nodes.find((n) => n.encryptedPathSecrets.some((c) => c.receiverLeaf === receiverLeafIndex));
   if (!overlap) {

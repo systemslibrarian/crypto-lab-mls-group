@@ -1,6 +1,7 @@
 import { randomBytes } from '../crypto/ciphersuite';
 import { buildWelcome, describeWelcome } from '../group/welcome';
 import { GroupStateModel } from '../group/group-state';
+import { memberName } from '../group/members';
 import { applyAdd, AddProposal } from './add';
 import { applyRemove, RemoveProposal } from './remove';
 import { applyUpdate, UpdateProposal } from './update';
@@ -46,8 +47,8 @@ export async function commitWithProposals(state: GroupStateModel, proposals: Pro
   void state.updateTranscriptHashes(`commit:${state.epoch}:${committerLeaf}`);
   state.transcript.unshift({
     kind: 'commit',
-    summary: `Commit by leaf ${committerLeaf}`,
-    detail: `Applied ${updates.length} updates, ${removes.length} removes, ${adds.length} adds`,
+    summary: `Commit by ${memberName(committerLeaf)} → epoch ${state.epoch}`,
+    detail: `Applied ${updates.length} update(s), ${removes.length} remove(s), ${adds.length} add(s); a new epoch secret now governs the group`,
     epoch: state.epoch
   });
 

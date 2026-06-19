@@ -1,26 +1,32 @@
 import { GroupStateModel } from '../group/group-state';
+import { memberName } from '../group/members';
 
-const LEAF_Y = 220;
+const LEAF_Y = 210;
 const ROOT_Y = 20;
 const SVG_W = 860;
+const SVG_H = 280;
 const SVG_PAD = 40;
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
   return document.createElementNS('http://www.w3.org/2000/svg', tag);
 }
 
-export function renderTreePanel(state: GroupStateModel): SVGSVGElement {
+export function renderTreePanel(state: GroupStateModel, animate = false): HTMLDivElement {
+  const wrapper = document.createElement('div');
   const tree = state.tree;
   const leaves = tree.leaves;
   const n = leaves.length;
 
   const svg = svgEl('svg');
-  svg.setAttribute('viewBox', `0 0 ${SVG_W} 260`);
+  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', `MLS TreeKEM ratchet tree — ${n} member${n !== 1 ? 's' : ''}`);
   svg.classList.add('tree-svg');
 
-  if (n === 0) return svg;
+  if (n === 0) {
+    wrapper.appendChild(svg);
+    return wrapper;
+  }
 
   // ── 1. Collect every node that exists in this tree ─────────────────────
   const allNodes = new Set<number>();
@@ -93,6 +99,11 @@ export function renderTreePanel(state: GroupStateModel): SVGSVGElement {
                      copathSet.has(idx) || copathSet.has(child);
       line.setAttribute('stroke', onPath ? 'var(--accent)' : 'var(--border)');
       line.setAttribute('stroke-width', onPath ? '2' : '1');
+      // Animate the committer's direct-path edges filling in bottom-to-top.
+      if (animate && directPathSet.has(idx)) {
+        line.classList.add('tree-anim');
+        line.style.animationDelay = `${tree.level(idx) * 0.13}s`;
+      }
       edgeGroup.appendChild(line);
     }
   }
@@ -136,13 +147,19 @@ export function renderTreePanel(state: GroupStateModel): SVGSVGElement {
     circle.setAttribute('stroke', stroke);
     circle.setAttribute('stroke-width', directPathSet.has(idx) || copathSet.has(idx) ? '2' : '1.5');
     circle.setAttribute('stroke-dasharray', strokeDash);
+    // Pop the re-keyed direct-path nodes (and the committer) in, climbing up.
+    if (animate && (directPathSet.has(idx) || idx === committer)) {
+      circle.classList.add('tree-anim-node');
+      circle.style.animationDelay = `${tree.level(idx) * 0.13}s`;
+    }
     circle.setAttribute('role', 'img');
+    const who = isLeaf && !node?.blank ? ` (${memberName(idx)})` : '';
     circle.setAttribute('aria-label',
-      `${isLeaf ? 'Leaf' : 'Parent'} node ${idx} — ${node?.blank ? 'blank' : 'active'}${directPathSet.has(idx) ? ', direct path' : ''}${copathSet.has(idx) ? ', copath' : ''}`
+      `${isLeaf ? 'Leaf' : 'Parent'} node ${idx}${who} — ${node?.blank ? 'blank' : 'active'}${directPathSet.has(idx) ? ', direct path' : ''}${copathSet.has(idx) ? ', copath' : ''}`
     );
     svg.appendChild(circle);
 
-    // Index label
+    // Index label (small, beside the node)
     const text = svgEl('text');
     text.setAttribute('x', `${pos.x + 11}`);
     text.setAttribute('y', `${pos.y + 4}`);
@@ -151,33 +168,57 @@ export function renderTreePanel(state: GroupStateModel): SVGSVGElement {
     text.setAttribute('aria-hidden', 'true');
     text.textContent = `${idx}`;
     svg.appendChild(text);
+
+    // Member name beneath each active leaf — anchors the abstract tree to people
+    if (isLeaf && !node?.blank) {
+      const nameText = svgEl('text');
+      nameText.setAttribute('x', `${pos.x}`);
+      nameText.setAttribute('y', `${pos.y + 25}`);
+      nameText.setAttribute('font-size', '13');
+      nameText.setAttribute('font-weight', '600');
+      nameText.setAttribute('text-anchor', 'middle');
+      nameText.setAttribute('fill', 'var(--text)');
+      nameText.setAttribute('aria-hidden', 'true');
+      nameText.textContent = memberName(idx);
+      svg.appendChild(nameText);
+    }
   }
 
-  // ── 6. Legend (only when committer is known) ─────────────────────────────
+  wrapper.appendChild(svg);
+
+  // ── 6. Legend + caption as accessible HTML below the diagram ──────────────
+  // Base entries explain node colours/shapes; the path entries only appear once
+  // a commit has set a committer, since they describe that specific commit.
+  const legendItems: Array<{ swatch: string; label: string }> = [
+    { swatch: 'leaf', label: 'member leaf' },
+    { swatch: 'parent', label: 'parent — intermediate keypair' },
+    { swatch: 'blank', label: 'blank — no key here' }
+  ];
   if (committer !== null && directPathSet.size > 0) {
-    const legend = svgEl('g');
-    legend.setAttribute('aria-hidden', 'true');
-    const items: Array<[string, string]> = [
-      ['var(--accent)', `direct path (leaf ${committer})`],
-      ['var(--danger)', 'copath targets']
-    ];
-    items.forEach(([color, label], i) => {
-      const dot = svgEl('circle');
-      dot.setAttribute('cx', `${SVG_W - 170}`);
-      dot.setAttribute('cy', `${10 + i * 16}`);
-      dot.setAttribute('r', '5');
-      dot.setAttribute('fill', color);
-      legend.appendChild(dot);
-      const t = svgEl('text');
-      t.setAttribute('x', `${SVG_W - 160}`);
-      t.setAttribute('y', `${14 + i * 16}`);
-      t.setAttribute('font-size', '10');
-      t.setAttribute('fill', 'var(--muted)');
-      t.textContent = label;
-      legend.appendChild(t);
-    });
-    svg.appendChild(legend);
+    legendItems.push({ swatch: 'path', label: `direct path — ${memberName(committer)} re-keyed these` });
+    legendItems.push({ swatch: 'copath', label: 'copath — subtrees the new keys are sent to' });
   }
 
-  return svg;
+  const legend = document.createElement('ul');
+  legend.className = 'tree-legend';
+  legend.setAttribute('aria-label', 'Tree node legend');
+  for (const { swatch, label } of legendItems) {
+    const li = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = `swatch swatch-${swatch}`;
+    dot.setAttribute('aria-hidden', 'true');
+    li.appendChild(dot);
+    li.appendChild(document.createTextNode(label));
+    legend.appendChild(li);
+  }
+  wrapper.appendChild(legend);
+
+  const caption = document.createElement('p');
+  caption.className = 'muted tree-caption';
+  caption.textContent = committer !== null && directPathSet.size > 0
+    ? `${memberName(committer)} committed: the highlighted direct path got fresh keys, each encrypted only to the copath subtrees — that's the O(log n) update.`
+    : 'Each member is a leaf; parent nodes hold shared keys derivable only by the members below them. Commit an Update to watch a direct path light up.';
+  wrapper.appendChild(caption);
+
+  return wrapper;
 }

@@ -426,6 +426,259 @@ pre {
   margin: 0;
 }
 
+/* ── Status banner (full-width) ─────────────────────────────────────────── */
+.status-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  background: linear-gradient(165deg, var(--bg-elevated), var(--bg-panel));
+}
+
+.status-banner .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.status-banner .stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.status-banner .stat-value {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.status-banner .stat:first-child .stat-value {
+  font-size: 1.6rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.status-banner .stat:nth-child(3) .stat-value {
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+/* ── "What just happened" narration (full-width) ────────────────────────── */
+.narration {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-panel);
+}
+
+.narration-success { border-left-color: var(--accent); }
+.narration-danger { border-left-color: var(--danger); }
+.narration-info { border-left-color: var(--focus-ring); }
+
+.narration-headline {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  margin-bottom: 0.4rem;
+}
+
+.narration ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.narration li {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ── Key-schedule derivation flow ───────────────────────────────────────── */
+.ks-flow {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.ks-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.ks-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-elevated);
+  min-width: 7.5rem;
+}
+
+.ks-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.ks-hex {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.ks-input { border-color: var(--accent); }
+.ks-epoch { border-color: var(--focus-ring); border-width: 2px; }
+.ks-input .ks-name { color: var(--accent); }
+
+.ks-arrow {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.ks-op {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+/* ── Tree legend + caption (HTML below the SVG) ─────────────────────────── */
+.tree-legend {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.tree-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tree-legend .swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.swatch-leaf { background: var(--accent); border: 1.5px solid var(--border); }
+.swatch-parent { background: var(--text); border: 1.5px solid var(--border); }
+.swatch-blank { background: transparent; border: 1.5px dashed var(--border); }
+.swatch-path { background: var(--accent); border: 2px solid var(--focus-ring); }
+.swatch-copath { background: var(--danger); border: 1.5px solid var(--danger); }
+
+.tree-caption {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* ── Guided tour ────────────────────────────────────────────────────────── */
+.tour-start {
+  margin-left: auto;
+}
+
+.tour-card {
+  grid-column: 1 / -1;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  background: linear-gradient(165deg, var(--bg-elevated), var(--bg-panel));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent), transparent 85%);
+}
+
+.tour-meta {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tour-title {
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  margin: 0.2rem 0 0.4rem;
+}
+
+.tour-body {
+  margin: 0 0 0.8rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.tour-controls {
+  gap: 0.6rem;
+}
+
+.tour-skip {
+  color: var(--muted);
+}
+
+/* ── Epoch bump animation ───────────────────────────────────────────────── */
+.epoch-bump {
+  display: inline-block;
+  animation: epochBump 0.6s ease;
+}
+
+@keyframes epochBump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+
+/* ── Tree re-key animation (direct path climbing) ───────────────────────── */
+.tree-anim {
+  animation: treeFill 0.35s ease both;
+}
+
+@keyframes treeFill {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tree-anim-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nodePop 0.35s ease both;
+}
+
+@keyframes nodePop {
+  0% { opacity: 0; transform: scale(0.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Convergence table monospace cells ──────────────────────────────────── */
+code {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+}
+
 /* Accessibility: Skip to main content link */
 a.skip-link {
   position: absolute;

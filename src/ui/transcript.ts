@@ -1,4 +1,5 @@
 import { TranscriptEntry } from '../group/group-state';
+import { memberName } from '../group/members';
 
 export function renderTranscriptPanel(entries: TranscriptEntry[]): HTMLDivElement {
   const root = document.createElement('div');
@@ -11,7 +12,7 @@ export function renderTranscriptPanel(entries: TranscriptEntry[]): HTMLDivElemen
     const row = document.createElement('article');
     row.className = 'transcript-item';
     const head = document.createElement('div');
-    head.innerHTML = `<strong>${item.kind.toUpperCase()}</strong> • epoch ${item.epoch}${item.generation ? ` • gen ${item.generation}` : ''}${item.senderLeaf !== undefined ? ` • sender ${item.senderLeaf}` : ''}`;
+    head.innerHTML = `<strong>${item.kind.toUpperCase()}</strong> • epoch ${item.epoch}${item.generation ? ` • gen ${item.generation}` : ''}${item.senderLeaf !== undefined ? ` • ${memberName(item.senderLeaf)} (leaf ${item.senderLeaf})` : ''}`;
     const body = document.createElement('div');
     body.textContent = `${item.summary}: ${item.detail}`;
     row.appendChild(head);

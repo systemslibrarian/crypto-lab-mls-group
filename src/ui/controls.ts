@@ -1,4 +1,5 @@
 import { GroupStateModel } from '../group/group-state';
+import { memberName } from '../group/members';
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -22,26 +23,29 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
   root.appendChild(add);
 
   for (const leaf of state.tree.leaves) {
+    const blank = state.tree.nodes.get(leaf)?.blank === true;
+    if (blank) continue; // skip removed/empty leaves — nothing to act on
     const row = document.createElement('div');
     row.className = 'row';
     const inputId = `msg-input-leaf-${leaf}`;
+    const name = memberName(leaf);
 
     const label = document.createElement('label');
-    label.textContent = `Leaf ${leaf} — message`;
+    label.textContent = `${name} · leaf ${leaf}`;
     label.htmlFor = inputId;
     label.className = 'leaf-label';
 
     const remove = document.createElement('button');
     remove.className = 'danger';
     remove.textContent = '✕ Remove';
-    remove.setAttribute('aria-label', `Remove leaf ${leaf} from the group`);
+    remove.setAttribute('aria-label', `Remove ${name} (leaf ${leaf}) from the group`);
     remove.onclick = () => {
       void handlers.onRemove(leaf);
     };
 
     const update = document.createElement('button');
     update.textContent = '🔄 Update';
-    update.setAttribute('aria-label', `Update key material for leaf ${leaf}`);
+    update.setAttribute('aria-label', `${name} rotates their keys (Update commit) for leaf ${leaf}`);
     update.onclick = () => {
       void handlers.onCommit(leaf);
     };
@@ -49,13 +53,13 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
     const input = document.createElement('input');
     input.type = 'text';
     input.id = inputId;
-    input.placeholder = 'message content...';
+    input.placeholder = `message from ${name}...`;
 
     const send = document.createElement('button');
     send.textContent = '📤 Send';
-    send.setAttribute('aria-label', `Send message from leaf ${leaf}`);
+    send.setAttribute('aria-label', `Send an encrypted message from ${name} (leaf ${leaf})`);
     send.onclick = () => {
-      void Promise.resolve(handlers.onSend(leaf, input.value || `hello from ${leaf}`));
+      void Promise.resolve(handlers.onSend(leaf, input.value || `hello from ${name}`));
       input.value = '';
     };
 

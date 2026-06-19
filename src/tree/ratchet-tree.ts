@@ -171,8 +171,20 @@ export class RatchetTree {
     if (k === 0) {
       return null;
     }
-    const r = x ^ (3 << (k - 1));
-    return r >= 0 && r < this.nodeWidth() ? r : null;
+    // RFC 9420 §8.1: the right child is x + 2^(k-1); if that lands past the end
+    // of a non-power-of-two tree, keep taking raw left children until it's in
+    // range so a lone trailing leaf is still reached. The descent uses the pure
+    // XOR formula (no width clamp) — left()'s range check is only for callers.
+    const width = this.nodeWidth();
+    let r = x ^ (3 << (k - 1));
+    while (r >= width) {
+      const rk = this.level(r);
+      if (rk === 0) {
+        return null;
+      }
+      r = r ^ (1 << (rk - 1));
+    }
+    return r >= 0 ? r : null;
   }
 
   sibling(x: number): number | null {
