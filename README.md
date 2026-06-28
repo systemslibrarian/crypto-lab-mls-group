@@ -1,18 +1,22 @@
 # crypto-lab-mls-group
 
-## 1. What It Is
+## What It Is
+
 This project is a browser-first demonstration of Messaging Layer Security (MLS) and TreeKEM from RFC 9420. It targets end-to-end encrypted group messaging where membership changes are frequent and asynchronous delivery is required. The protocol model focuses on large groups where pairwise approaches become expensive. Security goals include forward secrecy and post-compromise security across epochs. All core protocol flows are presented as in-browser, inspectable state transitions.
 
-## 2. When to Use It
+## When to Use It
+
 - Use it for team chat systems with larger memberships where updates must scale beyond pairwise session fanout.
 - Use it for enterprise or community messaging with frequent add, remove, and update operations.
 - Use it when asynchronous group delivery is needed and members may be offline during commits.
 - Use it when Double Ratchet pairwise meshes become operationally heavy in large channels.
 - Do not use MLS for strictly 1:1 conversations where Double Ratchet is lighter and simpler.
 - Do not use MLS without a delivery service capable of reliable asynchronous fan-out.
+- Do NOT treat this as production code — it is a teaching demo that visualizes the MLS/TreeKEM flow, not a hardened messaging stack.
 
-## 3. Live Demo
-https://systemslibrarian.github.io/crypto-lab-mls-group/
+## Live Demo
+
+**[systemslibrarian.github.io/crypto-lab-mls-group](https://systemslibrarian.github.io/crypto-lab-mls-group/)**
 
 In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their leaf indices, so the ratchet tree stays readable as you add and remove people. Every action is narrated in plain English ("what just happened") alongside the full protocol transcript, and a status banner always shows the current epoch and membership. New here? Click **Start guided tour** for a step-by-step walk through the whole group lifecycle. You can:
 
@@ -26,21 +30,49 @@ In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their 
 - Watch **Access Control** in action: the group sends a real message and a removed member fails to decrypt it while a current member succeeds.
 - Run one-click scenario presets (add, remove, PCS recovery, churn drill), each performing real cryptographic commits.
 
-## 4. How to Run Locally
-	git clone https://github.com/systemslibrarian/crypto-lab-mls-group
-	cd crypto-lab-mls-group
-	npm install
-	npm run dev
+## What Can Go Wrong
+
+- Untrusted delivery service: MLS relies on an external delivery service to order and fan out handshake messages; if it drops, reorders, or withholds commits, members can desynchronize epochs and fail to converge on the shared group secret.
+- Unauthenticated KeyPackages: adding a member from a forged or stale KeyPackage can let an attacker join or be impersonated — KeyPackages must be signature-verified and checked for freshness.
+- Missed commits and state loss: a member that fails to process a commit cannot derive the new epoch secret and is locked out until it replays the commit/welcome chain in order.
+- Post-compromise security is not automatic: a leaked leaf key keeps decrypting group traffic until the affected member performs an Update commit, so healing depends on members actually rotating.
+- Metadata exposure: MLS protects message content, but the delivery service still observes group membership, size, and message timing.
+
+## Real-World Usage
+
+- RFC 9420: MLS is the IETF standard for scalable end-to-end encrypted group messaging, defining TreeKEM, the epoch key schedule, and the handshake message formats.
+- IETF MIMI working group: MLS is the basis for the More Instant Messaging Interoperability effort aimed at cross-provider encrypted messaging.
+- OpenMLS: an open-source Rust implementation of RFC 9420 used in research and product integrations.
+- mlspp: Cisco's C++ MLS implementation, developed alongside the standard and used in conferencing/messaging work.
+- Messaging platforms: the protocol was designed with large-group E2EE deployment in mind and has been adopted/evaluated by messaging vendors moving beyond pairwise Double Ratchet.
+
+## How to Run Locally
+
+```bash
+git clone https://github.com/systemslibrarian/crypto-lab-mls-group
+cd crypto-lab-mls-group
+npm install
+npm run dev
+```
+
+## Related Demos
+
+- [crypto-lab-ratchet-wire](https://systemslibrarian.github.io/crypto-lab-ratchet-wire/) — the pairwise Double Ratchet that MLS scales past for groups.
+- [crypto-lab-x3dh-wire](https://systemslibrarian.github.io/crypto-lab-x3dh-wire/) — X3DH asynchronous key agreement from the Signal stack.
+- [crypto-lab-noise-pipe](https://systemslibrarian.github.io/crypto-lab-noise-pipe/) — Noise handshake patterns for authenticated secure channels.
+- [crypto-lab-hybrid-wire](https://systemslibrarian.github.io/crypto-lab-hybrid-wire/) — hybrid X25519 + ML-KEM key exchange for transport.
+- [crypto-lab-kerberos](https://systemslibrarian.github.io/crypto-lab-kerberos/) — a classic ticket-based key distribution protocol.
+
+## Testing
 
 Run the test suite (TreeKEM convergence, tree arithmetic, key schedule, forward secrecy, and removed-member lockout) with:
 
-	npm test
-
-## 5. Part of the Crypto-Lab Suite
-> One of 100+ live browser demos at
-> [systemslibrarian.github.io/crypto-lab](https://systemslibrarian.github.io/crypto-lab/)
-> — spanning Atbash (600 BCE) through NIST FIPS 203/204/205 (2024).
+```bash
+npm test
+```
 
 ---
 
-*"Whether you eat or drink, or whatever you do, do all to the glory of God." — 1 Corinthians 10:31*
+*One of 60+ browser demos in the [Crypto Lab](https://crypto-lab.systemslibrarian.dev/) suite.*
+
+*"So whether you eat or drink or whatever you do, do it all for the glory of God." — 1 Corinthians 10:31*
