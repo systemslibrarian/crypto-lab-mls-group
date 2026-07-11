@@ -899,6 +899,21 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(renderExplainer());
   main.appendChild(renderComparisonPanel());
 
+  // Scrollable output regions (overflow:auto) must be keyboard-focusable and
+  // named so keyboard users can reach their content (WCAG 2.1.1 /
+  // scrollable-region-focusable). <pre> code dumps and horizontally scrolling
+  // tables both qualify.
+  for (const el of Array.from(main.querySelectorAll<HTMLElement>('pre'))) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'region');
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', 'Code output');
+  }
+  for (const el of Array.from(main.querySelectorAll<HTMLElement>('.table-scroll'))) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'region');
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', 'Scrollable table');
+  }
+
   root.appendChild(header);
   root.appendChild(main);
 

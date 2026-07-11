@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg: #0f1724;
   --bg-panel: #1c2a3d;
   --bg-elevated: #263b56;
@@ -6,18 +7,22 @@
   --muted: #9db0cf;
   --border: #35537a;
   --accent: #4ec6b6;
-  --danger: #f16767;
+  /* #f16767 was 3.73:1 as button text on --bg-elevated; lighten to clear 4.5:1. */
+  --danger: #ff8f8f;
   --focus-ring: #7fd4cc;
 }
 
 :root[data-theme='light'] {
+  color-scheme: light;
   --bg: #f5f7fb;
   --bg-panel: #ffffff;
   --bg-elevated: #edf2fb;
   --text: #13253d;
   --muted: #4b607e;
   --border: #ccdae9;
-  --accent: #0a8d80;
+  /* #0a8d80 (teal) was only 3.64:1 as small bold text on --bg-elevated;
+     deepen so accent-colored text (ks-name, status-ok, skip-link fill) clears AA. */
+  --accent: #06665b;
   --danger: #bf2d2d;
   --focus-ring: #1a9e8d;
 }
@@ -28,6 +33,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Give <html> its own background so WebKit does not promote body's bg to the
+     canvas (which it then reports as transparent, causing phantom dark-theme
+     contrast failures in axe). */
+  background-color: var(--bg);
 }
 
 body {
@@ -424,6 +433,25 @@ pre {
 
 .scripture-footer p {
   margin: 0;
+}
+
+/* Related-demos links: without an explicit color the UA paints them in its
+   dark-scheme link blue (#9e9eff), which fails contrast on the light footer.
+   Use the theme accent (AA in both themes) and keep an underline so the links
+   are distinguishable from surrounding text without relying on color alone. */
+.related-demos a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.related-demos a:hover {
+  text-decoration: none;
+}
+
+.related-demos a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* ── Status banner (full-width) ─────────────────────────────────────────── */

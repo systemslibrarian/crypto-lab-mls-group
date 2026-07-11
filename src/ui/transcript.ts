@@ -4,9 +4,14 @@ import { memberName } from '../group/members';
 export function renderTranscriptPanel(entries: TranscriptEntry[]): HTMLDivElement {
   const root = document.createElement('div');
   root.className = 'transcript-list';
+  // role="log" is a live region that also supports an accessible name, so the
+  // aria-live / aria-relevant / aria-label attributes below are all permitted
+  // (a bare generic <div> prohibits aria-label -> aria-prohibited-attr).
+  root.setAttribute('role', 'log');
   root.setAttribute('aria-live', 'polite');
   root.setAttribute('aria-label', 'Protocol event transcript');
   root.setAttribute('aria-relevant', 'additions');
+  root.setAttribute('tabindex', '0');
 
   for (const item of entries) {
     const row = document.createElement('article');

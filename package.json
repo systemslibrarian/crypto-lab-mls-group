@@ -14,9 +14,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:a11y": "playwright test",
     "deploy": "npm run build && gh-pages -d dist"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
     "gh-pages": "^6.1.1",
     "typescript": "~5.7.2",
     "vite": "^6.0.0",
