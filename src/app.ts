@@ -809,15 +809,42 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   let busy = false;
 
   root.innerHTML = '';
+  // BEGIN cl-hero standard markup — managed, keep in sync across fleet
   const header = document.createElement('header');
-  const headerDiv = document.createElement('div');
+  header.className = 'cl-hero';
+
+  const heroMain = document.createElement('div');
+  heroMain.className = 'cl-hero-main';
   const h1 = document.createElement('h1');
-  h1.textContent = 'MLS Group Lab';
-  const subtitle = document.createElement('small');
-  subtitle.textContent = 'Interactive RFC 9420 TreeKEM — real X25519 · HKDF-SHA256 · AES-128-GCM';
-  headerDiv.appendChild(h1);
-  headerDiv.appendChild(subtitle);
-  header.appendChild(headerDiv);
+  h1.className = 'cl-hero-title';
+  h1.textContent = 'MLS Group';
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cl-hero-sub';
+  subtitle.textContent = 'TreeKEM · Key Schedule · RFC 9420';
+  const desc = document.createElement('p');
+  desc.className = 'cl-hero-desc';
+  desc.textContent =
+    'Add, remove, and update members in a live end-to-end encrypted group and watch TreeKEM re-key one root-to-leaf path while the epoch key schedule derives a fresh shared secret each epoch.';
+  heroMain.appendChild(h1);
+  heroMain.appendChild(subtitle);
+  heroMain.appendChild(desc);
+
+  const why = document.createElement('aside');
+  why.className = 'cl-hero-why';
+  why.setAttribute('aria-label', 'Why it matters');
+  const whyLabel = document.createElement('span');
+  whyLabel.className = 'cl-hero-why-label';
+  whyLabel.textContent = 'WHY IT MATTERS';
+  const whyText = document.createElement('p');
+  whyText.className = 'cl-hero-why-text';
+  whyText.textContent =
+    'MLS secures group chats for billions of users at scale. Its tree keeps re-keying cheap at O(log n), so one leaked device is contained: past messages stay secret and future epochs heal after compromise.';
+  why.appendChild(whyLabel);
+  why.appendChild(whyText);
+
+  header.appendChild(heroMain);
+  header.appendChild(why);
+  // END cl-hero standard markup
 
   const themeButton = document.createElement('button');
   themeButton.id = 'theme-toggle';
