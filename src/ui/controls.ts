@@ -45,7 +45,8 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
 
     const update = document.createElement('button');
     update.textContent = '🔄 Update';
-    update.setAttribute('aria-label', `${name} rotates their keys (Update commit) for leaf ${leaf}`);
+    update.setAttribute('aria-label', `${name} rotates their keys: stages an Update proposal and commits it in one step for leaf ${leaf}`);
+    update.title = 'Stages an Update proposal and immediately commits it (see “Proposal vs Commit” in Concepts). Only the Commit advances the epoch.';
     update.onclick = () => {
       void handlers.onCommit(leaf);
     };

@@ -79,11 +79,30 @@ export class GroupStateModel {
   fsSnapshot: { epoch: number; leaf: number; encHex: string; msgKeyHex: string } | null = null;
   // Guided-tour position (inactive until the user starts it).
   tour: { active: boolean; step: number } = { active: false, step: 0 };
+  // Which tree node the learner has clicked to inspect (null = none). Kept in
+  // state so the highlight/readout survives a re-render.
+  selectedNode: number | null = null;
+  // Progressive disclosure: the advanced proof/internals panels start hidden so a
+  // newcomer first meets just the tree, controls, and narration. The guided tour
+  // reveals each panel as it reaches the concept it teaches; a learner exploring
+  // solo can reveal any panel (or all) on demand. Once revealed, a panel stays
+  // revealed for the session.
+  revealed: Record<string, boolean> = {};
+
+  reveal(key: string): void {
+    this.revealed[key] = true;
+  }
   // The encryption_secret a member knew in the epoch they were removed in — kept
   // so the access-control demo can show they can no longer read new messages.
   removedSnapshot: { leaf: number; epoch: number; encryptionSecret: Uint8Array } | null = null;
   // Latest convergence-proof result (which members derived which root secret).
-  convergence: { committerLeaf: number; rows: Array<{ leaf: number; isCommitter: boolean; viaDecrypt: boolean; hex: string; match: boolean }> } | null = null;
+  convergence: { committerLeaf: number; tiedToCommit: boolean; commitSecretHex: string; rows: Array<{ leaf: number; isCommitter: boolean; viaDecrypt: boolean; hex: string; match: boolean }> } | null = null;
+  // The exact inputs of the last committed TreeKEM path — the committer's leaf,
+  // the fresh path secret they chose, and a clone of the tree as it was BEFORE
+  // that update mutated it. Replaying deriveConvergence() on these reproduces the
+  // real commit_secret this epoch consumed, so the Convergence panel's root
+  // secret ties back byte-for-byte to the key schedule's commit_secret chip.
+  lastPathCommit: { committerLeaf: number; pathSecret: Uint8Array; treeBefore: RatchetTree } | null = null;
   // Latest access-control demo result.
   accessResult: {
     epoch: number; senderLeaf: number; ctHex: string;

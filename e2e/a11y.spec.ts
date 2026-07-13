@@ -11,6 +11,28 @@ import { expect, test, type Page } from '@playwright/test';
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 async function revealEverything(page: Page): Promise<void> {
+  // Progressive disclosure hides the advanced panels behind teasers on first
+  // load. Reveal them all so axe scans their contents (tables, chips, readouts)
+  // in both themes — otherwise the gate would shrink a11y coverage.
+  const revealAll = page.getByRole('button', { name: 'Reveal all advanced panels at once' });
+  if (await revealAll.count()) {
+    await revealAll.click();
+  }
+  // Run the proof panels' actions so their output regions (convergence table,
+  // access-control verdict) actually render and get scanned. Select a member
+  // leaf too, so the tree selection readout is on screen.
+  const runButtons = [
+    /Independently derive the root secret/i,
+    /Send a secret in epoch/i,
+    /Capture .*current message key/i,
+  ];
+  for (const re of runButtons) {
+    const b = page.getByRole('button', { name: re });
+    if (await b.count()) await b.first().click();
+  }
+  const leaf0 = page.locator('#tree-node-0');
+  if (await leaf0.count()) await leaf0.click();
+
   // Neutralize animations/transitions/opacity so nothing is mid-fade when axe
   // measures contrast (mid-fade opacity produces phantom contrast failures).
   await page.addStyleTag({

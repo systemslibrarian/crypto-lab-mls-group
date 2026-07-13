@@ -18,13 +18,14 @@ This project is a browser-first demonstration of Messaging Layer Security (MLS) 
 
 **[systemslibrarian.github.io/crypto-lab-mls-group](https://systemslibrarian.github.io/crypto-lab-mls-group/)**
 
-In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their leaf indices, so the ratchet tree stays readable as you add and remove people. Every action is narrated in plain English ("what just happened") alongside the full protocol transcript, and a status banner always shows the current epoch and membership. New here? Click **Start guided tour** for a step-by-step walk through the whole group lifecycle. You can:
+In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their leaf indices, so the ratchet tree stays readable as you add and remove people. Every action is narrated in plain English ("what just happened") alongside the full protocol transcript, and a status banner always shows the current epoch and membership. **Progressive disclosure:** on first load you meet just the tree, the member controls, and the narration — the proof and internals panels stay behind labeled teasers and unlock as the guided tour reaches each concept (or all at once via **Show all panels**). New here? Click **Start guided tour** for a step-by-step walk through the whole group lifecycle. You can:
 
-- Take the **guided tour**: add → send → update → converge → remove → locked-out → heal, each step running real commits.
-- Add/remove members and watch the ratchet tree re-key, with the committer's direct path animating up the tree and the epoch number rolling over.
-- See the **TreeKEM Convergence** proof: every member independently derives the *same* root secret (the committer by ratcheting, the rest by HPKE-decrypting one path secret).
+- Take the **guided tour**: add → send → update → converge → remove → locked-out → heal, each step running real commits and revealing the panel it explains.
+- Add/remove members and watch the ratchet tree re-key, with the committer's direct path animating up the tree, small "sealed packet" icons flying to each copath leaf (the encrypt-to-copath step), and the epoch number rolling over.
+- **Click any tree node to inspect it**: a member leaf highlights exactly the keys that person can derive (their direct path) and dims the subtrees they are blind to; a parent node shows which members share it ("Derivable by: Alice, Bob") and its HPKE public key.
+- See the **TreeKEM Convergence** proof: every member independently derives the *same* root secret (the committer by ratcheting, the rest by HPKE-decrypting one path secret) — and the demo shows that shared secret **is** the live epoch's `commit_secret`, matching the Key Schedule panel's `commit_secret` chip byte-for-byte.
 - Send application messages encrypted with real per-message AES-128-GCM keys from each sender's ratchet.
-- Read the key schedule as a derivation diagram (init_secret + commit_secret → joiner → epoch → leaf secrets) with live byte values.
+- Read the key schedule as a derivation diagram (init_secret + commit_secret → joiner → epoch → per-epoch secrets) with live byte values, the two secrets this demo actually uses shown up front and the other seven grouped (with one-word purposes) behind a disclosure.
 - Step through a **Forward Secrecy** walkthrough: capture a message key, advance the epoch, and see the same derivation produce a different key — the old one is gone.
 - Step through a **Post-Compromise Security** walkthrough: mark a member compromised, then have them commit an Update to lock the attacker out.
 - Watch **Access Control** in action: the group sends a real message and a removed member fails to decrypt it while a current member succeeds.

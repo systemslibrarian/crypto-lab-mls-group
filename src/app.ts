@@ -147,6 +147,44 @@ function renderStatusBanner(state: GroupStateModel, animate: boolean, rerender: 
   return banner;
 }
 
+// ── Inline glosses: define core TreeKEM vocabulary at its point of use ───────
+// Each term gets a dotted-underline span with a definition exposed both visually
+// (title) and to assistive tech (aria-label on an abbr). We gloss only the FIRST
+// occurrence across a narration block so the prose stays clean.
+const GLOSSARY: Array<{ term: RegExp; label: string; def: string }> = [
+  { term: /direct path/i, label: 'direct path', def: 'direct path = the chain of parent nodes from your leaf up to the root — the nodes only you (and those below them) re-key.' },
+  { term: /copath/i, label: 'copath', def: 'copath = the sibling subtrees hanging off your path, i.e. exactly the members who must be told the new keys.' },
+  { term: /\bblank(ed)?\b/i, label: 'blank', def: 'blank = a node with no key right now (e.g. after a removal); its slot is filled again on the next commit that re-keys through it.' },
+  { term: /\bHPKE\b/, label: 'HPKE', def: 'HPKE (RFC 9180) = Hybrid Public Key Encryption; here DHKEM(X25519) seals each path secret to a recipient’s public key.' }
+];
+
+function glossInto(target: HTMLElement, line: string, used: Set<string>): void {
+  // Find the earliest not-yet-used glossary term in this line.
+  let best: { idx: number; len: number; g: typeof GLOSSARY[number] } | null = null;
+  for (const g of GLOSSARY) {
+    if (used.has(g.label)) continue;
+    const m = g.term.exec(line);
+    if (m && (best === null || m.index < best.idx)) {
+      best = { idx: m.index, len: m[0].length, g };
+    }
+  }
+  if (!best) {
+    target.appendChild(document.createTextNode(line));
+    return;
+  }
+  used.add(best.g.label);
+  target.appendChild(document.createTextNode(line.slice(0, best.idx)));
+  const abbr = document.createElement('abbr');
+  abbr.className = 'gloss';
+  abbr.textContent = line.slice(best.idx, best.idx + best.len);
+  abbr.title = best.g.def;
+  abbr.setAttribute('aria-label', `${best.g.label}: ${best.g.def}`);
+  abbr.tabIndex = 0;
+  target.appendChild(abbr);
+  // Recurse on the remainder so a line can carry more than one distinct gloss.
+  glossInto(target, line.slice(best.idx + best.len), used);
+}
+
 // ── "what just happened" narration (full width) ─────────────────────────────
 function renderNarration(state: GroupStateModel): HTMLElement {
   const n: Narration = state.narration ?? {
@@ -170,9 +208,10 @@ function renderNarration(state: GroupStateModel): HTMLElement {
   root.appendChild(h);
 
   const ul = document.createElement('ul');
+  const used = new Set<string>();
   for (const line of n.lines) {
     const li = document.createElement('li');
-    li.textContent = line;
+    glossInto(li, line, used);
     ul.appendChild(li);
   }
   root.appendChild(ul);
@@ -193,10 +232,11 @@ function renderKeySchedule(state: GroupStateModel): HTMLDivElement {
   const flow = document.createElement('div');
   flow.className = 'ks-flow';
 
-  const chip = (name: string, value: Uint8Array, kind: string): HTMLElement => {
+  const chip = (name: string, value: Uint8Array, kind: string, purpose?: string): HTMLElement => {
     const c = document.createElement('div');
     c.className = `ks-chip ks-${kind}`;
-    c.innerHTML = `<span class="ks-name">${name}</span><span class="ks-hex">${snip(value)}…</span>`;
+    const purposeHtml = purpose ? `<span class="ks-purpose">${purpose}</span>` : '';
+    c.innerHTML = `<span class="ks-name">${name}</span><span class="ks-hex">${snip(value)}…</span>${purposeHtml}`;
     return c;
   };
   const arrow = (text: string): HTMLElement => {
@@ -212,26 +252,47 @@ function renderKeySchedule(state: GroupStateModel): HTMLDivElement {
     return r;
   };
 
-  // inputs → joiner → epoch → leaf secrets
+  // inputs → joiner → epoch → derived secrets
   flow.appendChild(rowOf(chip('init_secret', state.epochInputs.init, 'input'), chip('commit_secret', state.epochInputs.commit, 'input')));
   flow.appendChild(arrow('Extract(init_secret, commit_secret)'));
   flow.appendChild(rowOf(chip('joiner_secret', s.joiner, 'mid'), chip('welcome_secret', s.welcome, 'mid')));
   flow.appendChild(arrow('DeriveSecret(joiner_secret, "epoch")'));
   flow.appendChild(rowOf(chip('epoch_secret', s.epoch, 'epoch')));
   flow.appendChild(arrow('DeriveSecret(epoch_secret, label) — one per label'));
+
+  // The nine per-epoch secrets are NOT tree leaves — they are sibling outputs of
+  // one Extract-then-Expand step. Group them so a newcomer sees the two this demo
+  // actually exercises first, and can expand the rest with their purpose labels.
+  const primaryLabel = document.createElement('p');
+  primaryLabel.className = 'ks-group-label';
+  primaryLabel.textContent = 'You’ll use these here:';
+  root.appendChild(flow);
+  flow.appendChild(primaryLabel);
   flow.appendChild(rowOf(
-    chip('sender_data', s.sender_data, 'leaf'),
-    chip('encryption', s.encryption, 'leaf'),
-    chip('exporter', s.exporter, 'leaf'),
-    chip('external', s.external, 'leaf'),
-    chip('confirmation', s.confirmation, 'leaf'),
-    chip('membership', s.membership, 'leaf'),
-    chip('resumption', s.resumption, 'leaf'),
-    chip('authentication', s.authentication, 'leaf'),
-    chip('init (next epoch)', s.init, 'leaf')
+    chip('encryption', s.encryption, 'out', 'seeds message keys'),
+    chip('init (next epoch)', s.init, 'out', 'chains to next epoch')
   ));
 
-  root.appendChild(flow);
+  const more = document.createElement('details');
+  more.className = 'ks-more';
+  const sum = document.createElement('summary');
+  sum.textContent = 'Other MLS purposes (7 more secrets)';
+  more.appendChild(sum);
+  const moreRow = document.createElement('div');
+  moreRow.className = 'ks-row';
+  const others: Array<[string, Uint8Array, string]> = [
+    ['sender_data', s.sender_data, 'hides sender metadata'],
+    ['exporter', s.exporter, 'app-defined exports'],
+    ['external', s.external, 'external joiners'],
+    ['confirmation', s.confirmation, 'confirms the commit'],
+    ['membership', s.membership, 'authenticates handshakes'],
+    ['resumption', s.resumption, 'reinit / branch'],
+    ['authentication', s.authentication, 'per-member auth']
+  ];
+  for (const [name, val, purpose] of others) moreRow.appendChild(chip(name, val, 'out', purpose));
+  more.appendChild(moreRow);
+  flow.appendChild(more);
+
   return root;
 }
 
@@ -330,6 +391,7 @@ function renderExplainer(): HTMLDivElement {
   root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch derives a fresh key schedule and reseeds every sender ratchet, and each message key is discarded after one use. A key compromised today cannot decrypt earlier messages. See the Forward Secrecy Walkthrough to try it.</p></details>`;
   root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member is compromised, any new Update commit on their direct path replaces the leaked keys, so future epochs are secret again. See the PCS Recovery Walkthrough.</p></details>`;
   root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. TreeKEM arranges members as leaves of a left-balanced binary tree, so a re-key only touches one root-to-leaf direct path — O(log n) ciphertexts per commit.</p></details>`;
+  root.innerHTML += `<details><summary>Proposal vs Commit (what the buttons really do)</summary><p>MLS separates <em>proposing</em> a change from <em>committing</em> it. A Proposal (Add / Remove / Update) is a standalone message that only <em>describes</em> an intended change — it does not alter keys or advance the epoch. A <strong>Commit</strong> bundles a set of pending proposals, applies them, runs the TreeKEM path update, and <em>then</em> advances to the next epoch with fresh secrets.</p><p>To keep this demo to one click, each button here stages its proposal and immediately commits it (the committer also does a self-Update so every commit re-keys a path). So in the real protocol an "Update" you see is two objects: an Update <em>proposal</em> plus the <em>Commit</em> that carries it — and only the Commit rolls the epoch.</p></details>`;
   root.innerHTML += `<details><summary>What's Real, What's Simulated</summary><div class="grid-list"><div><h3>Real in this demo:</h3><p>Every X25519 scalar multiplication, SHA-256, HKDF and AES-128-GCM operation, ExpandWithLabel key schedule, TreeKEM UpdatePath math, DHKEM encapsulation/decapsulation, and confirmation tag checks.</p></div><div><h3>Simulated for browser context:</h3><p>Delivery service fan-out is in-memory, KeyPackages are generated in-session, and identity keys are session-local.</p></div><div><h3>Not included (out of scope):</h3><p>External PSKs, group re-initialization flows, and federated inter-group protocols.</p></div></div></details>`;
   return root;
 }
@@ -550,11 +612,22 @@ function renderScenarioPanel(state: GroupStateModel, rerender: () => void, guard
 
 // ── shared actions (used by panels and the guided tour) ─────────────────────
 async function runConvergence(state: GroupStateModel): Promise<void> {
-  const committerLeaf = state.lastCommitterLeaf ?? state.activeMembers()[0] ?? 0;
-  const { committerSecret, rows } = await deriveConvergence(state.tree, committerLeaf, randomBytes(32));
+  // Prefer replaying the LIVE last-committed path: same committer, same path
+  // secret, same pre-commit tree. That reproduces the exact commit_secret this
+  // epoch's key schedule consumed, so the root secret shown here matches the
+  // key-schedule panel's commit_secret chip byte-for-byte. Only if no commit has
+  // happened yet (fresh group) do we fall back to a fresh path over the current
+  // tree — still real crypto, just not tied to a prior commit.
+  const live = state.lastPathCommit;
+  const committerLeaf = live?.committerLeaf ?? state.lastCommitterLeaf ?? state.activeMembers()[0] ?? 0;
+  const tree = live?.treeBefore ?? state.tree;
+  const pathSecret = live?.pathSecret ?? randomBytes(32);
+  const { committerSecret, rows } = await deriveConvergence(tree, committerLeaf, pathSecret);
   const target = snip(committerSecret);
   state.convergence = {
     committerLeaf,
+    tiedToCommit: live !== null,
+    commitSecretHex: snip(committerSecret),
     rows: rows.map((r) => ({
       leaf: r.leaf,
       isCommitter: r.isCommitter,
@@ -621,7 +694,7 @@ function renderConvergencePanel(state: GroupStateModel, rerender: () => void, gu
         `<th scope="row">${memberName(r.leaf)}</th>` +
         `<td>${via}</td>` +
         `<td><code>${r.hex}…</code></td>` +
-        `<td>${r.match ? '✓' : '✗'}</td>`;
+        `<td>${r.match ? '✓ yes' : '✗ no'}</td>`;
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -632,9 +705,25 @@ function renderConvergencePanel(state: GroupStateModel, rerender: () => void, gu
 
     const verdict = document.createElement('pre');
     verdict.className = allMatch ? 'muted status-ok' : 'muted status-warning';
-    verdict.textContent = allMatch
-      ? `✓ All ${result.rows.length} members independently derived the same root secret.\n  That shared secret becomes the next epoch's commit_secret.`
-      : '⚠ Secrets diverged — unexpected';
+    if (!allMatch) {
+      verdict.textContent = '⚠ Secrets diverged — unexpected';
+    } else if (result.tiedToCommit) {
+      // Cross-reference: this shared root IS the commit_secret the live key
+      // schedule consumed. Show both hex prefixes so a learner can verify the
+      // Key Schedule panel's commit_secret chip matches, byte-for-byte.
+      const liveCommit = snip(state.epochInputs.commit);
+      const chipMatches = liveCommit === result.commitSecretHex;
+      verdict.textContent =
+        `✓ All ${result.rows.length} members independently derived the same root secret:\n` +
+        `    ${result.commitSecretHex}…\n\n` +
+        `This is epoch ${state.epoch}'s commit_secret — the same value the Key\n` +
+        `Schedule panel feeds in as commit_secret:\n` +
+        `    commit_secret chip: ${liveCommit}…  ${chipMatches ? '✓ matches' : '(cross-check above)'}`;
+    } else {
+      verdict.textContent =
+        `✓ All ${result.rows.length} members independently derived the same root secret.\n` +
+        `  Commit an Update first to tie this to the live epoch's commit_secret.`;
+    }
     root.appendChild(verdict);
   }
 
@@ -703,6 +792,9 @@ async function runTourAction(state: GroupStateModel, act: string): Promise<void>
       await commitWithProposals(state, [{ type: 'add' }], 0);
       const added = state.activeMembers().find((l) => !before.has(l));
       state.narration = buildAddNarration(state, added, prevEpoch);
+      // First commit advances the epoch — reveal the key schedule so the learner
+      // can see the secrets that just changed.
+      state.reveal('keySchedule');
       break;
     }
     case 'send': {
@@ -710,6 +802,7 @@ async function runTourAction(state: GroupStateModel, act: string): Promise<void>
       await state.sendApplication(sender, 'hello team — first encrypted message');
       const gen = state.ratchets.get(sender)?.appGeneration ?? 1;
       state.narration = buildSendNarration(state, sender, gen);
+      state.reveal('fs');
       break;
     }
     case 'update': {
@@ -718,10 +811,12 @@ async function runTourAction(state: GroupStateModel, act: string): Promise<void>
       await commitWithProposals(state, [{ type: 'update', leafIndex: committer }], committer);
       state.narration = buildUpdateNarration(state, committer, prevEpoch);
       await runConvergence(state);
+      state.reveal('convergence');
       break;
     }
     case 'converge':
       await runConvergence(state);
+      state.reveal('convergence');
       break;
     case 'remove': {
       // Remove the last member so the demo stays predictable.
@@ -731,12 +826,15 @@ async function runTourAction(state: GroupStateModel, act: string): Promise<void>
       state.removedSnapshot = { leaf: victim, epoch: state.epoch, encryptionSecret: state.epochSecrets.encryption.slice() };
       await commitWithProposals(state, [{ type: 'remove', leafIndex: victim }], committer);
       state.narration = buildRemoveNarration(state, victim, committer, prevEpoch);
+      state.reveal('access');
       break;
     }
     case 'access':
       await runAccess(state);
+      state.reveal('access');
       break;
     case 'pcs': {
+      state.reveal('pcs');
       state.seedPcsCompromise();
       const prevEpoch = state.epoch;
       await commitWithProposals(state, [{ type: 'update', leafIndex: 0 }], 0);
@@ -785,6 +883,9 @@ function renderTour(state: GroupStateModel, rerender: () => void, guard: (fn: ()
   next.onclick = () => void guard(async () => {
     if (step.act) await runTourAction(state, step.act);
     if (isLast) {
+      // Finishing the tour hands the learner the full lab: reveal every panel so
+      // they can now explore freely with all the internals on screen.
+      for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison']) state.reveal(k);
       state.tour = { active: false, step: 0 };
     } else {
       state.tour = { active: true, step: state.tour.step + 1 };
@@ -801,6 +902,62 @@ function renderTour(state: GroupStateModel, rerender: () => void, guard: (fn: ()
   controls.appendChild(skip);
 
   root.appendChild(controls);
+  return root;
+}
+
+// ── Progressive disclosure ──────────────────────────────────────────────────
+// Metadata for each gated panel: a stable key, a title, and a one-line pitch
+// shown on the locked teaser so a learner knows what they'll reveal.
+interface GateInfo { key: string; title: string; pitch: string; }
+
+// Render a gated panel: if revealed (or the tour is active, which drives its own
+// reveals), show the real panel; otherwise show a slim teaser with a reveal
+// button so newcomers aren't buried under every panel at once.
+function gated(
+  state: GroupStateModel,
+  info: GateInfo,
+  build: () => HTMLElement,
+  rerender: () => void
+): HTMLElement {
+  if (state.revealed[info.key]) return build();
+
+  const teaser = document.createElement('section');
+  teaser.className = 'panel panel-locked';
+  const h = document.createElement('h2');
+  h.id = `panel-locked-${info.key}`;
+  h.textContent = info.title;
+  teaser.appendChild(h);
+  teaser.setAttribute('aria-labelledby', h.id);
+
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = info.pitch;
+  teaser.appendChild(p);
+
+  const btn = document.createElement('button');
+  btn.textContent = `＋ Show ${info.title}`;
+  btn.setAttribute('aria-label', `Reveal the ${info.title} panel`);
+  btn.onclick = () => { state.reveal(info.key); rerender(); };
+  teaser.appendChild(btn);
+  return teaser;
+}
+
+function renderRevealAll(state: GroupStateModel, rerender: () => void): HTMLElement {
+  const root = document.createElement('section');
+  root.className = 'reveal-all';
+  root.setAttribute('aria-label', 'Explore the advanced panels');
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = 'New here? Take the guided tour — it reveals each panel as it explains the concept. Prefer to dig in yourself? Reveal the proofs and internals below.';
+  root.appendChild(p);
+  const btn = document.createElement('button');
+  btn.textContent = '🔍 Show all panels (key schedule, proofs, scenarios)';
+  btn.setAttribute('aria-label', 'Reveal all advanced panels at once');
+  btn.onclick = () => {
+    for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison']) state.reveal(k);
+    rerender();
+  };
+  root.appendChild(btn);
   return root;
 }
 
@@ -871,7 +1028,12 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   };
 
   const tree = panel('Ratchet Tree');
-  tree.appendChild(renderTreePanel(state, animate));
+  tree.appendChild(renderTreePanel(state, animate, {
+    onSelect: (nodeIndex: number | null) => {
+      state.selectedNode = nodeIndex;
+      rerender();
+    }
+  }));
   const transcript = panel('Transcript');
   transcript.appendChild(renderTranscriptPanel(state.transcript));
   const controls = panel('Member Controls');
@@ -914,17 +1076,31 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
     main.appendChild(renderTour(state, rerender, guard));
   }
   main.appendChild(renderNarration(state));
+
+  // Always-on core: the tree, the controls to drive it, and the dual-track
+  // narration + transcript. This is the newcomer's on-ramp — no proof panels yet.
   main.appendChild(tree);
   main.appendChild(controls);
   main.appendChild(transcript);
-  main.appendChild(renderKeySchedule(state));
-  main.appendChild(renderConvergencePanel(state, rerender, guard));
-  main.appendChild(renderFsPanel(state, rerender, guard));
-  main.appendChild(renderPcsPanel(state, rerender, guard));
-  main.appendChild(renderAccessPanel(state, rerender, guard));
-  main.appendChild(renderScenarioPanel(state, rerender, guard));
-  main.appendChild(renderExplainer());
-  main.appendChild(renderComparisonPanel());
+
+  // A "explore on your own" affordance for learners who skip the tour: reveal all
+  // the advanced panels at once. (The tour reveals them one at a time.)
+  const allKeys = ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison'];
+  const allRevealed = allKeys.every((k) => state.revealed[k]);
+  if (!state.tour.active && !allRevealed) {
+    main.appendChild(renderRevealAll(state, rerender));
+  }
+
+  // Gated proof/internals panels — hidden until revealed (by the tour, the
+  // reveal-all control, or their own teaser button).
+  main.appendChild(gated(state, { key: 'keySchedule', title: 'Key Schedule', pitch: 'See the live epoch secrets: how init_secret + commit_secret are mixed and expanded into every key this epoch uses.' }, () => renderKeySchedule(state), rerender));
+  main.appendChild(gated(state, { key: 'convergence', title: 'TreeKEM Convergence', pitch: 'The core proof: every member independently derives the SAME root secret — and it equals this epoch’s commit_secret.' }, () => renderConvergencePanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'fs', title: 'Forward Secrecy Walkthrough', pitch: 'Capture a message key, advance the epoch, and watch the same derivation yield a different key — the old one is gone.' }, () => renderFsPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'pcs', title: 'PCS Recovery Walkthrough', pitch: 'Mark a member compromised, then heal it with one Update commit that locks the attacker out of all future epochs.' }, () => renderPcsPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'access', title: 'Access Control: Removed Member', pitch: 'Prove a removed member is locked out: the group sends a real AES-GCM message they can no longer decrypt.' }, () => renderAccessPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'scenarios', title: 'Scenario Presets', pitch: 'One-click stories (add, remove, PCS recovery, churn) that each run real commits end to end.' }, () => renderScenarioPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'concepts', title: 'Concepts', pitch: 'Plain-English explainers: forward secrecy, post-compromise security, why a tree, and what’s real vs simulated here.' }, () => renderExplainer(), rerender));
+  main.appendChild(gated(state, { key: 'comparison', title: 'Comparison Panel', pitch: 'How MLS/TreeKEM compares to X3DH + Double Ratchet across scaling, cost, and security models.' }, () => renderComparisonPanel(), rerender));
 
   // Scrollable output regions (overflow:auto) must be keyboard-focusable and
   // named so keyboard users can reach their content (WCAG 2.1.1 /

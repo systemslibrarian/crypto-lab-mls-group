@@ -10,6 +10,15 @@ export interface UpdateProposal {
 
 export async function applyUpdate(state: GroupStateModel, leafIndex: number): Promise<Uint8Array> {
   const pathSecret = randomBytes(32);
+  // Snapshot the tree and the fresh path secret BEFORE this update mutates the
+  // tree, so the TreeKEM Convergence panel can replay this exact commit and
+  // reproduce the very same commit_secret the key schedule then consumes. This
+  // is the real committed material, not a fresh random path.
+  state.lastPathCommit = {
+    committerLeaf: leafIndex,
+    pathSecret: pathSecret.slice(),
+    treeBefore: state.tree.clone()
+  };
   const updatePath = await generateUpdatePath(state.tree, leafIndex, pathSecret);
 
   for (const leaf of state.tree.leaves) {

@@ -527,6 +527,21 @@ pre {
   line-height: 1.5;
 }
 
+/* Inline glossary term: dotted underline signals "hover/focus for a definition".
+   Colour stays --text so contrast is unchanged from body copy in both themes. */
+.gloss {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: help;
+  font-style: normal;
+}
+.gloss:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* ── Key-schedule derivation flow ───────────────────────────────────────── */
 .ks-flow {
   display: grid;
@@ -569,6 +584,34 @@ pre {
 .ks-input { border-color: var(--accent); }
 .ks-epoch { border-color: var(--focus-ring); border-width: 2px; }
 .ks-input .ks-name { color: var(--accent); }
+.ks-out { border-color: var(--border); }
+
+.ks-purpose {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.2;
+}
+
+.ks-group-label {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.ks-more {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.7rem;
+}
+.ks-more > summary {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.ks-more .ks-row {
+  margin-top: 0.5rem;
+}
 
 .ks-arrow {
   display: flex;
@@ -617,11 +660,80 @@ pre {
 .swatch-blank { background: transparent; border: 1.5px dashed var(--border); }
 .swatch-path { background: var(--accent); border: 2px solid var(--focus-ring); }
 .swatch-copath { background: var(--danger); border: 1.5px solid var(--danger); }
+.swatch-sel { background: var(--focus-ring); border: 2px dashed var(--focus-ring); }
+
+/* ── Interactive tree nodes ─────────────────────────────────────────────── */
+.tree-node-hit { cursor: pointer; }
+.tree-node-hit:focus-visible {
+  outline: none;
+}
+.tree-node-hit:focus-visible > circle:nth-child(2) {
+  stroke: var(--focus-ring);
+  stroke-width: 3;
+}
+.tree-node-hit:hover > circle:nth-child(2) {
+  stroke: var(--focus-ring);
+}
+
+/* Sealed path-secret packet flying from a direct-path node to its copath. */
+.tree-packet { opacity: 0.95; }
+
+/* ── Tree selection readout ─────────────────────────────────────────────── */
+.tree-readout {
+  margin: 0.6rem 0 0;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--focus-ring);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-elevated);
+}
+.tree-readout > * + * { margin-top: 0.35rem; }
+.tree-readout p { margin: 0; }
+.tree-readout-title {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.tree-readout-key {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+.tree-readout-clear {
+  min-height: 36px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
 
 .tree-caption {
   margin: 0.5rem 0 0;
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+/* ── Progressive disclosure: locked panel teasers + reveal-all ──────────── */
+.panel-locked {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--bg-panel), var(--bg) 35%);
+}
+.panel-locked > p {
+  margin: 0 0 0.7rem;
+}
+
+.reveal-all {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  background: color-mix(in srgb, var(--bg-elevated), var(--accent) 5%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+.reveal-all > p {
+  margin: 0;
+  flex: 1 1 20rem;
 }
 
 /* ── Guided tour ────────────────────────────────────────────────────────── */
