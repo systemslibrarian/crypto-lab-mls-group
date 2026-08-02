@@ -5,7 +5,8 @@
   --bg-elevated: #263b56;
   --text: #ecf2ff;
   --muted: #9db0cf;
-  --border: #35537a;
+  /* Load-bearing control boundaries clear WCAG non-text contrast on elevated fields. */
+  --border: #7089ab;
   --accent: #4ec6b6;
   /* #f16767 was 3.73:1 as button text on --bg-elevated; lighten to clear 4.5:1. */
   --danger: #ff8f8f;
@@ -19,7 +20,7 @@
   --bg-elevated: #edf2fb;
   --text: #13253d;
   --muted: #4b607e;
-  --border: #ccdae9;
+  --border: #74869c;
   /* #0a8d80 (teal) was only 3.64:1 as small bold text on --bg-elevated;
      deepen so accent-colored text (ks-name, status-ok, skip-link fill) clears AA. */
   --accent: #06665b;
