@@ -2,7 +2,7 @@
 
 ## What It Is
 
-This project is a browser-first demonstration of Messaging Layer Security (MLS) and TreeKEM from RFC 9420. It targets end-to-end encrypted group messaging where membership changes are frequent and asynchronous delivery is required. The protocol model focuses on large groups where pairwise approaches become expensive. Security goals include forward secrecy and post-compromise security across epochs. All core protocol flows are presented as in-browser, inspectable state transitions.
+This project is a browser-first teaching subset of Messaging Layer Security (MLS) and TreeKEM mechanics from RFC 9420. It uses real TreeKEM, X25519, HKDF, and AES-GCM operations, but it is not a complete RFC 9420 implementation: Ed25519 credential signatures, authenticated handshake framing, and confirmation-tag construction/verification are omitted, so commits and application messages in the model are unsigned. The model focuses on large groups where pairwise approaches become expensive.
 
 ## When to Use It
 

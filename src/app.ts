@@ -133,7 +133,7 @@ function renderStatusBanner(state: GroupStateModel, animate: boolean, rerender: 
 
   banner.appendChild(stat('Epoch', `${state.epoch}`, animate ? 'epoch-bump' : ''));
   banner.appendChild(stat(`Members (${members.length})`, names || '—'));
-  banner.appendChild(stat('Ciphersuite', 'MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 (0x0001)'));
+  banner.appendChild(stat('Target ciphersuite', 'MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 (signature layer omitted)'));
 
   if (!state.tour.active) {
     const tourBtn = document.createElement('button');
@@ -392,7 +392,7 @@ function renderExplainer(): HTMLDivElement {
   root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member is compromised, any new Update commit on their direct path replaces the leaked keys, so future epochs are secret again. See the PCS Recovery Walkthrough.</p></details>`;
   root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. TreeKEM arranges members as leaves of a left-balanced binary tree, so a re-key only touches one root-to-leaf direct path — O(log n) ciphertexts per commit.</p></details>`;
   root.innerHTML += `<details><summary>Proposal vs Commit (what the buttons really do)</summary><p>MLS separates <em>proposing</em> a change from <em>committing</em> it. A Proposal (Add / Remove / Update) is a standalone message that only <em>describes</em> an intended change — it does not alter keys or advance the epoch. A <strong>Commit</strong> bundles a set of pending proposals, applies them, runs the TreeKEM path update, and <em>then</em> advances to the next epoch with fresh secrets.</p><p>To keep this demo to one click, each button here stages its proposal and immediately commits it (the committer also does a self-Update so every commit re-keys a path). So in the real protocol an "Update" you see is two objects: an Update <em>proposal</em> plus the <em>Commit</em> that carries it — and only the Commit rolls the epoch.</p></details>`;
-  root.innerHTML += `<details><summary>What's Real, What's Simulated</summary><div class="grid-list"><div><h3>Real in this demo:</h3><p>Every X25519 scalar multiplication, SHA-256, HKDF and AES-128-GCM operation, ExpandWithLabel key schedule, TreeKEM UpdatePath math, DHKEM encapsulation/decapsulation, and confirmation tag checks.</p></div><div><h3>Simulated for browser context:</h3><p>Delivery service fan-out is in-memory, KeyPackages are generated in-session, and identity keys are session-local.</p></div><div><h3>Not included (out of scope):</h3><p>External PSKs, group re-initialization flows, and federated inter-group protocols.</p></div></div></details>`;
+  root.innerHTML += `<details><summary>What's Real, What's Simulated</summary><div class="grid-list"><div><h3>Real in this demo:</h3><p>X25519 scalar multiplication, SHA-256, HKDF, AES-128-GCM, ExpandWithLabel key-schedule derivations, TreeKEM UpdatePath math, and DHKEM encapsulation/decapsulation.</p></div><div><h3>Simulated for browser context:</h3><p>Delivery service fan-out is in-memory, KeyPackages are generated in-session, and identity keys are session-local.</p></div><div><h3>Not included (out of scope):</h3><p>Ed25519 credential signatures and verification, authenticated handshake framing, construction or verification of confirmation tags, external PSKs, group re-initialization flows, and federated inter-group protocols. Commits and application messages in this teaching model are unsigned.</p></div></div></details>`;
   return root;
 }
 
@@ -1027,6 +1027,12 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
     try { await fn(); } finally { busy = false; }
   };
 
+  const scope = document.createElement('section');
+  scope.className = 'panel';
+  scope.id = 'implementation-scope';
+  scope.setAttribute('aria-labelledby', 'implementation-scope-title');
+  scope.innerHTML = `<h2 id="implementation-scope-title">Teaching subset — not a complete RFC 9420 implementation</h2><p>This lab exercises real TreeKEM, X25519, HKDF, and AES-GCM mechanics. It does <strong>not</strong> implement Ed25519 credential signatures, authenticated handshake framing, or confirmation-tag construction and verification; its commits and application messages are unsigned.</p>`;
+
   const tree = panel('Ratchet Tree');
   tree.appendChild(renderTreePanel(state, animate, {
     onSelect: (nodeIndex: number | null) => {
@@ -1071,6 +1077,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
     })
   );
 
+  main.appendChild(scope);
   main.appendChild(renderStatusBanner(state, animate, rerender, guard));
   if (state.tour.active) {
     main.appendChild(renderTour(state, rerender, guard));

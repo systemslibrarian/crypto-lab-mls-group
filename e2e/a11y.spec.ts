@@ -76,3 +76,14 @@ test('no WCAG A/AA violations in light theme', async ({ page }) => {
   await revealEverything(page);
   await scan(page);
 });
+
+test('prominently discloses the unsigned RFC 9420 teaching subset', async ({ page }) => {
+  await page.goto('.');
+  const scope = page.locator('#implementation-scope');
+  await expect(scope).toBeVisible();
+  await expect(scope).toContainText('not a complete RFC 9420 implementation');
+  await expect(scope).toContainText('Ed25519 credential signatures');
+  await expect(scope).toContainText('confirmation-tag construction and verification');
+  await expect(scope).toContainText('unsigned');
+  await expect(page).toHaveTitle(/Mechanics Subset/);
+});
