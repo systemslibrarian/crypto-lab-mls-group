@@ -70,7 +70,17 @@ Run the test suite (TreeKEM convergence, tree arithmetic, key schedule, forward 
 
 ```bash
 npm test
+npm run test:a11y   # browser gate (Playwright): on-screen claims + WCAG A/AA
 ```
+
+`e2e/claims.spec.ts` drives the real page and checks every headline against the
+page's own numbers: each narration's "epoch A → B" against the status banner,
+the convergence table against the Key Schedule panel's `commit_secret` chip, the
+forward-secrecy verdict against the two message keys it printed, PCS healing
+against the exposed and the current epoch secret, and the removed member's
+lockout against the plaintext a current member read from that same ciphertext.
+The nine-step guided tour is walked end to end, asserting that exactly the four
+committing steps advance the epoch.
 
 ---
 
