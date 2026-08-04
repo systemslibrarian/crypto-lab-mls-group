@@ -19,10 +19,19 @@ for (const theme of ['dark', 'light'] as const) {
   test(`text input boundary clears 3:1 in ${theme} theme`, async ({ page }) => {
     await page.goto('.');
     if (theme === 'light') await page.locator('#cl-theme-toggle').click();
-    const colors = await page.locator('input[type="text"]').first().evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { border: style.borderTopColor, background: style.backgroundColor };
-    });
-    expect(contrast(colors.border, colors.background)).toBeGreaterThanOrEqual(3);
+    // The inputs carry `transition: all .15s`, so a single read right after the
+    // theme flip samples an interpolated colour part-way between the two themes
+    // and scores whatever the machine happened to be mid-fade. Poll until the
+    // transition settles; a genuinely failing settled colour still times out here.
+    await expect
+      .poll(async () =>
+        contrast(
+          ...(await page.locator('input[type="text"]').first().evaluate((element) => {
+            const style = getComputedStyle(element);
+            return [style.borderTopColor, style.backgroundColor] as [string, string];
+          }))
+        )
+      )
+      .toBeGreaterThanOrEqual(3);
   });
 }
