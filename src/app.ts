@@ -966,7 +966,8 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   let busy = false;
 
   root.innerHTML = '';
-  // BEGIN cl-hero standard markup — managed, keep in sync across fleet
+  // Hero markup. THIS LAB OWNS IT — the fleet-wide "managed block" push was
+  // retired; keep it consistent with the fleet by review, not by a script.
   const header = document.createElement('header');
   header.className = 'cl-hero';
 
@@ -1001,7 +1002,6 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
 
   header.appendChild(heroMain);
   header.appendChild(why);
-  // END cl-hero standard markup
 
   const themeButton = document.createElement('button');
   themeButton.id = 'theme-toggle';
