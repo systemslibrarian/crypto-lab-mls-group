@@ -92,26 +92,32 @@ h2 {
   font-size: clamp(1rem, 3vw, 1.25rem);
 }
 
-main,
-.panels-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
-  padding: 1rem;
+/* #app IS the <main>, and it holds exactly two children: the hero header and
+   the .panels-grid wrapper. Making #app itself a column grid put the hero in
+   column 1 and every panel in column 2 — which squeezed the hero to half width
+   and shoved the "why it matters" aside out of place. #app is a plain centered
+   column; only .panels-grid lays panels out in columns. */
+main {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
 
+.panels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  width: 100%;
+}
+
 @media (min-width: 1200px) {
-  main,
   .panels-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  main,
   .panels-grid {
     grid-template-columns: 1fr;
     padding: 0.75rem;
@@ -129,6 +135,11 @@ main,
   border-radius: 12px;
   padding: 1rem;
   overflow: hidden;
+}
+
+/* Page-level preamble, like .status-banner and .narration below it. */
+#implementation-scope {
+  grid-column: 1 / -1;
 }
 
 .panel h2 {
