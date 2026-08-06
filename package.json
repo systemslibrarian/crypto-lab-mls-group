@@ -23,7 +23,7 @@
     "gh-pages": "^6.1.1",
     "typescript": "~5.7.2",
     "vite": "^6.0.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@noble/ciphers": "^1.2.1",
