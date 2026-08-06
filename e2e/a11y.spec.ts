@@ -37,7 +37,7 @@ async function revealEverything(page: Page): Promise<void> {
   // measures contrast (mid-fade opacity produces phantom contrast failures).
   await page.addStyleTag({
     content: `*,*::before,*::after{animation:none!important;transition:none!important}
-      [hidden]{opacity:1!important}`,
+      [hidden]{}`,
   });
 
   await page.evaluate(() => {
