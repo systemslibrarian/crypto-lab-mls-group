@@ -223,7 +223,12 @@ button.danger {
 }
 
 button.danger:hover {
-  background: color-mix(in srgb, var(--bg-elevated), var(--danger) 15%);
+  /* 8%, not 15%: this hover tint lightens the backdrop TOWARD --danger, which
+     is also the label's own colour, so the two converge. At 15% the label
+     measured 4.05:1 against its own hover background — a control that becomes
+     harder to read exactly when you point at it. 8% keeps the red tint and
+     clears 4.5:1. */
+  background: color-mix(in srgb, var(--bg-elevated), var(--danger) 8%);
 }
 
 input[type='text'],
@@ -545,6 +550,23 @@ pre {
   cursor: help;
   font-style: normal;
 }
+/* Off-screen store for gloss definitions, referenced by aria-describedby (see
+   glossInto in app.ts: an aria-label on <abbr> is discarded, because <abbr> maps
+   to the generic role). Clipped rather than `display: none` so it stays in the
+   accessibility tree, and outside the narration so it does not alter the
+   narration's textContent. */
+.gloss-defs {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .gloss:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;

@@ -148,15 +148,48 @@ function renderStatusBanner(state: GroupStateModel, animate: boolean, rerender: 
 }
 
 // ── Inline glosses: define core TreeKEM vocabulary at its point of use ───────
-// Each term gets a dotted-underline span with a definition exposed both visually
-// (title) and to assistive tech (aria-label on an abbr). We gloss only the FIRST
-// occurrence across a narration block so the prose stays clean.
+// Each term gets a dotted-underline <abbr> with a definition exposed both
+// visually (title) and to assistive tech (aria-describedby -> an off-screen
+// node). NOT aria-label: <abbr> has no ARIA role of its own, so it maps to
+// `generic`, and ARIA prohibits a name on a generic role — every browser
+// discards it silently, which is what this code used to do, so the definition
+// reached no screen reader at all. aria-describedby is a global attribute and
+// is not prohibited there; the gloss is focusable, so the description is
+// announced on focus.
+//
+// The description nodes live OUTSIDE the narration, in a shared off-screen
+// container. Putting them inline would change the narration's textContent —
+// which is the protocol claim the lab is asserting about itself, and is checked
+// character-for-character by e2e/claims.spec.ts.
+// We gloss only the FIRST occurrence across a narration block so the prose
+// stays clean.
 const GLOSSARY: Array<{ term: RegExp; label: string; def: string }> = [
   { term: /direct path/i, label: 'direct path', def: 'direct path = the chain of parent nodes from your leaf up to the root — the nodes only you (and those below them) re-key.' },
   { term: /copath/i, label: 'copath', def: 'copath = the sibling subtrees hanging off your path, i.e. exactly the members who must be told the new keys.' },
   { term: /\bblank(ed)?\b/i, label: 'blank', def: 'blank = a node with no key right now (e.g. after a removal); its slot is filled again on the next commit that re-keys through it.' },
   { term: /\bHPKE\b/, label: 'HPKE', def: 'HPKE (RFC 9180) = Hybrid Public Key Encryption; here DHKEM(X25519) seals each path secret to a recipient’s public key.' }
 ];
+
+// Off-screen store for gloss definitions. One node per term, created on first
+// use and reused thereafter, so ids stay stable across the re-renders that
+// every group operation triggers.
+function glossDescriptionId(label: string, def: string): string {
+  const id = `gloss-def-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+  if (!document.getElementById(id)) {
+    let host = document.getElementById('gloss-defs');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'gloss-defs';
+      host.className = 'gloss-defs';
+      document.body.appendChild(host);
+    }
+    const node = document.createElement('span');
+    node.id = id;
+    node.textContent = def;
+    host.appendChild(node);
+  }
+  return id;
+}
 
 function glossInto(target: HTMLElement, line: string, used: Set<string>): void {
   // Find the earliest not-yet-used glossary term in this line.
@@ -178,8 +211,8 @@ function glossInto(target: HTMLElement, line: string, used: Set<string>): void {
   abbr.className = 'gloss';
   abbr.textContent = line.slice(best.idx, best.idx + best.len);
   abbr.title = best.g.def;
-  abbr.setAttribute('aria-label', `${best.g.label}: ${best.g.def}`);
   abbr.tabIndex = 0;
+  abbr.setAttribute('aria-describedby', glossDescriptionId(best.g.label, best.g.def));
   target.appendChild(abbr);
   // Recurse on the remainder so a line can carry more than one distinct gloss.
   glossInto(target, line.slice(best.idx + best.len), used);
