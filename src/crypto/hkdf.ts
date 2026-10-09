@@ -1,5 +1,5 @@
-import { expand, extract } from '@noble/hashes/hkdf';
-import { sha256 } from '@noble/hashes/sha2';
+import { expand, extract } from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { MLS_CIPHERSUITE, concatBytes, u16be, utf8 } from './ciphersuite';
 
 export function expandWithLabel(secret: Uint8Array, label: string, context: Uint8Array, length: number): Uint8Array {
