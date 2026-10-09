@@ -62,28 +62,30 @@ function kemDecap(recipientPrivateKey: Uint8Array, enc: Uint8Array): Uint8Array 
 }
 
 // RFC 9180 §5.1 Base mode key schedule
-function hpkeKeySchedule(sharedSecret: Uint8Array, info: Uint8Array): { key: Uint8Array; nonce: Uint8Array } {
+export function hpkeKeySchedule(sharedSecret: Uint8Array, info: Uint8Array): { key: Uint8Array; nonce: Uint8Array } {
   const empty = new Uint8Array(0);
   const pskIdHash = labeledExtract(HPKE_SUITE_ID, undefined, 'psk_id_hash', empty);
   const infoHash  = labeledExtract(HPKE_SUITE_ID, undefined, 'info_hash', info);
   // mode = 0x00 (Base)
   const ksContext = concatBytes(new Uint8Array([0x00]), pskIdHash, infoHash);
-  const psk = labeledExtract(HPKE_SUITE_ID, undefined, 'psk', empty);
-  const secret = labeledExtract(HPKE_SUITE_ID, psk, 'shared_secret', sharedSecret);
+  // Base mode has an empty PSK: shared_secret is the salt, not the IKM.
+  const secret = labeledExtract(HPKE_SUITE_ID, sharedSecret, 'secret', empty);
   const key   = labeledExpand(HPKE_SUITE_ID, secret, 'key',        ksContext, 16); // Nk=16
   const nonce = labeledExpand(HPKE_SUITE_ID, secret, 'base_nonce', ksContext, 12); // Nn=12
   return { key, nonce };
 }
 
-export async function hpkeSeal(recipientPublicKey: Uint8Array, aad: Uint8Array, plaintext: Uint8Array): Promise<HpkeCiphertext> {
+// Single-shot base mode (sequence 0). Existing MLS callers bind the same bytes
+// as info and AAD; an explicit info permits independent RFC 9180 inputs.
+export async function hpkeSeal(recipientPublicKey: Uint8Array, aad: Uint8Array, plaintext: Uint8Array, info: Uint8Array = aad): Promise<HpkeCiphertext> {
   const { sharedSecret, enc } = kemEncap(recipientPublicKey);
-  const { key, nonce } = hpkeKeySchedule(sharedSecret, aad);
+  const { key, nonce } = hpkeKeySchedule(sharedSecret, info);
   const ciphertext = await aesGcmEncrypt(key, nonce, aad, plaintext);
   return { enc, ciphertext };
 }
 
-export async function hpkeOpen(recipientPrivateKey: Uint8Array, enc: Uint8Array, aad: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array> {
+export async function hpkeOpen(recipientPrivateKey: Uint8Array, enc: Uint8Array, aad: Uint8Array, ciphertext: Uint8Array, info: Uint8Array = aad): Promise<Uint8Array> {
   const sharedSecret = kemDecap(recipientPrivateKey, enc);
-  const { key, nonce } = hpkeKeySchedule(sharedSecret, aad);
+  const { key, nonce } = hpkeKeySchedule(sharedSecret, info);
   return aesGcmDecrypt(key, nonce, aad, ciphertext);
 }
