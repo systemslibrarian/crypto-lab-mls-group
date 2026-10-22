@@ -37,6 +37,7 @@ const GATED_PANELS = [
   'Scenario Presets',
   'Concepts',
   'Comparison Panel',
+  'Post-Quantum MLS Draft',
 ];
 
 async function open(page: Page): Promise<void> {
@@ -109,6 +110,32 @@ test('progressive disclosure: the internals stay gated until revealed', async ({
   }
   // Once everything is revealed the "show all" affordance retires itself.
   await expect(page.locator('.reveal-all')).toHaveCount(0);
+});
+
+test('PQ MLS draft comparison distinguishes confidentiality from authentication without switching live crypto', async ({ page }) => {
+  await open(page);
+  const before = await banner(page);
+  await page.getByRole('button', { name: 'Reveal the Post-Quantum MLS Draft panel' }).click();
+  const pq = panel(page, 'Post-Quantum MLS Draft');
+
+  await expect(pq).toContainText('Conceptual comparison only');
+  await expect(pq).toContainText('Internet-Draft dated 21 July 2026');
+  await expect(pq).toContainText('This lab omits credential signatures');
+  await expect(pq).toContainText('MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519');
+
+  await pq.getByRole('button', { name: 'Draft hybrid KEM + classical signature' }).click();
+  await expect(pq.locator('.pq-mls-result')).toContainText('MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519');
+  await expect(pq.locator('.pq-mls-result')).toContainText('Classical only');
+  await expect(pq.locator('.pq-mls-result')).toContainText('not full post-quantum security');
+
+  await pq.getByRole('button', { name: 'Draft hybrid KEM + post-quantum signature' }).click();
+  await expect(pq.locator('.pq-mls-result')).toContainText('MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44');
+  await expect(pq.locator('.pq-mls-result')).toContainText('ML-DSA-44 (post-quantum)');
+  await expect(pq.locator('.pq-mls-result')).toContainText('Designed for post-quantum authentication');
+  await expect(pq.getByRole('link', { name: 'MLS PQ ciphersuites draft-06 §3.1' })).toHaveAttribute('href', /draft-ietf-mls-pq-ciphersuites-06/);
+
+  expect(await banner(page)).toEqual(before);
+  await expect(page.locator('.status-banner')).toContainText('MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519');
 });
 
 test('lifecycle: add, update and remove each advance the epoch the narration claims', async ({

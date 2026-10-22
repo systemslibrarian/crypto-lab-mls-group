@@ -30,6 +30,11 @@ In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their 
 - Step through a **Post-Compromise Security** walkthrough: mark a member compromised, then have them commit an Update to lock the attacker out.
 - Watch **Access Control** in action: the group sends a real message and a removed member fails to decrypt it while a current member succeeds.
 - Run one-click scenario presets (add, remove, PCS recovery, churn drill), each performing real cryptographic commits.
+- Open the optional **Post-Quantum MLS Draft** panel. Select the classical suite modeled here, a proposed ML-KEM-768 + X25519 suite with Ed25519 signatures, or a proposed hybrid suite with ML-DSA-44 signatures. The panel separately labels the intended confidentiality and authentication properties. Its selection is an explanation only: the live group still uses classical X25519, HKDF-SHA256, and AES-128-GCM, and this lab omits even the classical signature layer.
+
+### Post-quantum MLS context
+
+[RFC 9420 §17.1](https://www.rfc-editor.org/rfc/rfc9420#section-17.1) includes the classical `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519` ciphersuite. The IETF MLS working group's [*ML-KEM and Hybrid Cipher Suites for Messaging Layer Security*, draft-06 §§3.1, 4](https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-06#section-3.1), published **21 July 2026**, proposes additional suites. Its first eight proposed suites use a post-quantum or hybrid KEM with a classical signature, targeting post-quantum confidentiality while leaving authentication classical. Its final three use ML-DSA signatures as well. It remains an **Internet-Draft, not a final RFC**. The comparison is a reading exercise, not a PQ MLS implementation, interoperability test, performance measurement, or a claim that this unsigned teaching model inherits RFC 9420's complete security properties.
 
 ## What Can Go Wrong
 

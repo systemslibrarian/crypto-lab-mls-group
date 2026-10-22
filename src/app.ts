@@ -2,6 +2,7 @@ import { GroupStateModel, createInitialGroupState, Narration } from './group/gro
 import { renderTreePanel } from './ui/tree-view';
 import { renderTranscriptPanel } from './ui/transcript';
 import { renderMemberControls } from './ui/controls';
+import { renderPqMlsComparison } from './ui/pq-mls-comparison';
 import { commitWithProposals } from './proposals/commit';
 import { memberName } from './group/members';
 import { deriveConvergence } from './tree/treekem';
@@ -918,7 +919,7 @@ function renderTour(state: GroupStateModel, rerender: () => void, guard: (fn: ()
     if (isLast) {
       // Finishing the tour hands the learner the full lab: reveal every panel so
       // they can now explore freely with all the internals on screen.
-      for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison']) state.reveal(k);
+      for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison', 'pqMls']) state.reveal(k);
       state.tour = { active: false, step: 0 };
     } else {
       state.tour = { active: true, step: state.tour.step + 1 };
@@ -987,7 +988,7 @@ function renderRevealAll(state: GroupStateModel, rerender: () => void): HTMLElem
   btn.textContent = '🔍 Show all panels (key schedule, proofs, scenarios)';
   btn.setAttribute('aria-label', 'Reveal all advanced panels at once');
   btn.onclick = () => {
-    for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison']) state.reveal(k);
+    for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison', 'pqMls']) state.reveal(k);
     rerender();
   };
   root.appendChild(btn);
@@ -1125,7 +1126,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
 
   // A "explore on your own" affordance for learners who skip the tour: reveal all
   // the advanced panels at once. (The tour reveals them one at a time.)
-  const allKeys = ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison'];
+  const allKeys = ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison', 'pqMls'];
   const allRevealed = allKeys.every((k) => state.revealed[k]);
   if (!state.tour.active && !allRevealed) {
     main.appendChild(renderRevealAll(state, rerender));
@@ -1141,6 +1142,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(gated(state, { key: 'scenarios', title: 'Scenario Presets', pitch: 'One-click stories (add, remove, PCS recovery, churn) that each run real commits end to end.' }, () => renderScenarioPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'concepts', title: 'Concepts', pitch: 'Plain-English explainers: forward secrecy, post-compromise security, why a tree, and what’s real vs simulated here.' }, () => renderExplainer(), rerender));
   main.appendChild(gated(state, { key: 'comparison', title: 'Comparison Panel', pitch: 'How MLS/TreeKEM compares to X3DH + Double Ratchet across scaling, cost, and security models.' }, () => renderComparisonPanel(), rerender));
+  main.appendChild(gated(state, { key: 'pqMls', title: 'Post-Quantum MLS Draft', pitch: 'Compare this classical suite with proposed ML-KEM suites: which protect confidentiality, and which add post-quantum signatures?' }, () => renderPqMlsComparison(), rerender));
 
   // Scrollable output regions (overflow:auto) must be keyboard-focusable and
   // named so keyboard users can reach their content (WCAG 2.1.1 /
