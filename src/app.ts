@@ -140,7 +140,7 @@ function renderStatusBanner(state: GroupStateModel, animate: boolean, rerender: 
     const tourBtn = document.createElement('button');
     tourBtn.className = 'tour-start';
     tourBtn.textContent = '🧭 Start guided tour';
-    tourBtn.setAttribute('aria-label', 'Start the guided tour of the MLS group lifecycle');
+    tourBtn.setAttribute('aria-label', 'Start guided tour: of the MLS group lifecycle');
     tourBtn.onclick = () => void guard(async () => { state.tour = { active: true, step: 0 }; rerender(); });
     banner.appendChild(tourBtn);
   }
@@ -970,7 +970,7 @@ function gated(
 
   const btn = document.createElement('button');
   btn.textContent = `＋ Show ${info.title}`;
-  btn.setAttribute('aria-label', `Reveal the ${info.title} panel`);
+  btn.setAttribute('aria-label', `Show ${info.title}: reveal the ${info.title} panel`);
   btn.onclick = () => { state.reveal(info.key); rerender(); };
   teaser.appendChild(btn);
   return teaser;
@@ -986,7 +986,7 @@ function renderRevealAll(state: GroupStateModel, rerender: () => void): HTMLElem
   root.appendChild(p);
   const btn = document.createElement('button');
   btn.textContent = '🔍 Show all panels (key schedule, proofs, scenarios)';
-  btn.setAttribute('aria-label', 'Reveal all advanced panels at once');
+  btn.setAttribute('aria-label', 'Show all panels (key schedule, proofs, scenarios): reveal all advanced panels at once');
   btn.onclick = () => {
     for (const k of ['keySchedule', 'convergence', 'fs', 'pcs', 'access', 'scenarios', 'concepts', 'comparison', 'pqMls']) state.reveal(k);
     rerender();

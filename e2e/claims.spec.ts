@@ -145,7 +145,7 @@ test('lifecycle: add, update and remove each advance the epoch the narration cla
 
   // --- Add -----------------------------------------------------------------
   let before = await banner(page);
-  await page.getByRole('button', { name: 'Add a new member to the group' }).click();
+  await page.getByRole('button', { name: /^Add member:/ }).click();
   await expect(membersLabel(page)).toHaveText(`Members (${before.count + 1})`);
 
   let after = await banner(page);
@@ -450,7 +450,7 @@ test('guided tour: the nine steps run the whole lifecycle and leave everything r
     'That is the whole lifecycle',
   ];
 
-  await page.getByRole('button', { name: /Start the guided tour/ }).click();
+  await page.getByRole('button', { name: /^Start guided tour:/ }).click();
   await expect(page.locator('.tour-card')).toHaveCount(1);
 
   // Only these steps commit, so only these may advance the epoch.

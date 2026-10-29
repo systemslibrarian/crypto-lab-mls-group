@@ -99,7 +99,7 @@ export async function boot(page: Page, theme: 'dark' | 'light'): Promise<void> {
   ).toBe(true);
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 
-  await expect(page.getByRole('button', { name: /Add a new member/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Add member:/i })).toBeVisible();
   await expect(page.locator('#app')).not.toBeEmpty();
 
   await settle(page);
@@ -304,7 +304,7 @@ export async function scan(page: Page, label: string): Promise<void> {
 export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await scan(page, `${theme} / first paint`);
 
-  const addMember = () => page.getByRole('button', { name: /Add a new member/i });
+  const addMember = () => page.getByRole('button', { name: /^Add member:/i });
 
   await addMember().click();
   await scan(page, `${theme} / member added`);

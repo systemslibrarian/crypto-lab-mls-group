@@ -16,7 +16,7 @@ export function renderMemberControls(state: GroupStateModel, handlers: ControlsH
 
   const add = document.createElement('button');
   add.textContent = '➕ Add member';
-  add.setAttribute('aria-label', 'Add a new member to the group');
+  add.setAttribute('aria-label', 'Add member: a new member of the group');
   add.onclick = () => {
     void handlers.onAdd();
   };
