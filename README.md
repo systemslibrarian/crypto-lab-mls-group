@@ -92,3 +92,7 @@ committing steps advance the epoch.
 *Part of the [Crypto Lab](https://crypto-lab.systemslibrarian.dev/) suite.*
 
 *"So whether you eat or drink or whatever you do, do it all for the glory of God." — 1 Corinthians 10:31*
+
+## Research review extension 31 October 2026
+
+R20261031-03: Application histories are retained per recipient. A separate AES-GCM/ECDSA teaching transport contrasts authentic malicious-member poll equivocation with honest edit reconciliation, missing/altered edit sets and malformed ciphertext. Key equality never establishes application consistency. The main unsigned MLS teaching model and its TreeKEM convergence behavior are preserved.
