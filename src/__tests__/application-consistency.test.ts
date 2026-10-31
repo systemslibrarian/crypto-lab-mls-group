@@ -34,6 +34,8 @@ describe('application consistency is independent of key convergence',()=>{
     const b={message:{id:'b',sender:'Alice',sequence:2,kind:'edit' as const,field:'closing',value:'18:00'},decrypted:true,authenticated:true};
     const r=compareHistories([[a,b],[b,a]]);
     expect(r.messageSet).toBe(true);expect(r.senderOrder).toBe(false);expect(r.totalOrder).toBe(false);
+    const duplicate=compareHistories([[a,b],[a,a,b]]);
+    expect(duplicate.messageSet).toBe(true);expect(duplicate.totalOrder).toBe(false);
     const poll={id:'p',sender:'M',sequence:1,kind:'poll' as const,question:'Q?',choices:['yes','no']};
     expect(pollBinding(poll,0)).not.toBe(pollBinding({...poll,choices:['no','yes']},0));
   });

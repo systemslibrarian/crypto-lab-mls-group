@@ -6,7 +6,7 @@ export type Scenario = 'equivocation' | 'honest' | 'missing' | 'altered' | 'malf
 export function compareHistories(histories: Delivery[][]) {
   const valid = histories.every(h => h.every(d => d.decrypted && d.authenticated));
   const records = histories.map(h => h.map(d => JSON.stringify(d.message)));
-  const sets = records.map(r => JSON.stringify([...r].sort()));
+  const sets = records.map(r => JSON.stringify([...new Set(r)].sort()));
   const messageSet = valid && sets.every(s => s === sets[0]);
   const totalOrder = messageSet && records.every(r => JSON.stringify(r) === JSON.stringify(records[0]));
   const senderOrders = histories.map(h => {
@@ -21,7 +21,7 @@ export function compareHistories(histories: Delivery[][]) {
     for (const d of h) if (d.message.kind === 'edit') fields[d.message.field!] = d.message.value!;
     return JSON.stringify(Object.entries(fields).sort(([a],[b])=>a.localeCompare(b)));
   });
-  const reconciled = messageSet && documents.every(s=>s===documents[0]);
+  const reconciled = messageSet && histories.every(h=>h.every(d=>d.message.kind==='edit')) && documents.every(s=>s===documents[0]);
   return { valid, messageSet, senderOrder, totalOrder, reconciled, documents };
 }
 
