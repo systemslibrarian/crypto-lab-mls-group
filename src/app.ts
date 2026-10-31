@@ -3,6 +3,7 @@ import { renderTreePanel } from './ui/tree-view';
 import { renderTranscriptPanel } from './ui/transcript';
 import { renderMemberControls } from './ui/controls';
 import { renderPqMlsComparison } from './ui/pq-mls-comparison';
+import { renderApplicationConsistency } from './ui/application-consistency';
 import { commitWithProposals } from './proposals/commit';
 import { memberName } from './group/members';
 import { deriveConvergence } from './tree/treekem';
@@ -1123,6 +1124,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(tree);
   main.appendChild(controls);
   main.appendChild(transcript);
+  main.appendChild(renderApplicationConsistency(state));
 
   // A "explore on your own" affordance for learners who skip the tour: reveal all
   // the advanced panels at once. (The tour reveals them one at a time.)

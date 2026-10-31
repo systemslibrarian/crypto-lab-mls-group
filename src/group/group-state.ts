@@ -65,6 +65,9 @@ export class GroupStateModel {
   epoch = 0;
   tree: RatchetTree;
   transcript: TranscriptEntry[] = [];
+  // Application delivery is separate from the protocol event log. A new member
+  // receives future messages only; removing one does not rewrite their history.
+  applicationHistories = new Map<number, TranscriptEntry[]>();
   initSecret = randomBytes(32);
   commitSecret = randomBytes(32);
   epochSecret = randomBytes(32);
@@ -159,7 +162,7 @@ export class GroupStateModel {
 
     const ctHex = Array.from(ciphertext.slice(0, 12)).map((b) => b.toString(16).padStart(2, '0')).join('');
 
-    this.transcript.unshift({
+    const entry: TranscriptEntry = {
       kind: 'application',
       summary: `${memberName(senderLeaf)} → group`,
       detail: text,
@@ -168,7 +171,13 @@ export class GroupStateModel {
       senderLeaf,
       tag,
       ciphertext: `${ctHex}… (${ciphertext.length}B)`
-    });
+    };
+    this.transcript.unshift(entry);
+    for (const leaf of this.activeMembers()) {
+      const history = this.applicationHistories.get(leaf) ?? [];
+      history.push({ ...entry });
+      this.applicationHistories.set(leaf, history);
+    }
   }
 
   seedPcsCompromise(): void {
