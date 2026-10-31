@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateApplication, pollBinding } from '../group/application-consistency';
+import { simulateApplication, pollBinding, compareHistories } from '../group/application-consistency';
 import { createInitialGroupState } from '../group/group-state';
 
 describe('application consistency is independent of key convergence',()=>{
@@ -28,5 +28,13 @@ describe('application consistency is independent of key convergence',()=>{
   });
   it('rejects invalid poll indices',()=>{
     expect(()=>pollBinding({id:'p',sender:'a',sequence:1,kind:'poll',question:'Q?',choices:['yes']},1)).toThrow();
+  });
+  it('checks same-sender order separately and binds ordered choices',()=>{
+    const a={message:{id:'a',sender:'Alice',sequence:1,kind:'edit' as const,field:'opening',value:'09:00'},decrypted:true,authenticated:true};
+    const b={message:{id:'b',sender:'Alice',sequence:2,kind:'edit' as const,field:'closing',value:'18:00'},decrypted:true,authenticated:true};
+    const r=compareHistories([[a,b],[b,a]]);
+    expect(r.messageSet).toBe(true);expect(r.senderOrder).toBe(false);expect(r.totalOrder).toBe(false);
+    const poll={id:'p',sender:'M',sequence:1,kind:'poll' as const,question:'Q?',choices:['yes','no']};
+    expect(pollBinding(poll,0)).not.toBe(pollBinding({...poll,choices:['no','yes']},0));
   });
 });
