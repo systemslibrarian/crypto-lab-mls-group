@@ -1,6 +1,6 @@
 import { MLS_CIPHERSUITE } from '../crypto/ciphersuite';
 
-// Examples from RFC 9420 and draft-ietf-mls-pq-ciphersuites-06, Table 1.
+// Examples from RFC 9420 and draft-ietf-mls-pq-ciphersuites-07, Table 1.
 // These are labels for a comparison exercise, not selectable crypto in this lab.
 const OPTIONS = [
   {
@@ -17,9 +17,9 @@ const OPTIONS = [
     suite: 'MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519',
     kem: 'ML-KEM-768 + X25519 (hybrid)',
     signature: 'Ed25519 (classical)',
-    confidentiality: 'Designed for post-quantum confidentiality',
+    confidentiality: 'Post-quantum against passive attackers only',
     authentication: 'Classical only',
-    lesson: 'A quantum-resistant KEM does not make its Ed25519 authentication post-quantum. The draft calls this confidentiality protection, not full post-quantum security.'
+    lesson: 'The hybrid KEM addresses passive harvest-now-decrypt-later attacks, but Ed25519 authentication remains classical. An attacker able to forge its signatures or identity credentials could inject KeyPackages or group operations and compromise later epochs. This is not full post-quantum security.'
   },
   {
     label: 'Draft hybrid KEM + post-quantum signature',
@@ -47,7 +47,7 @@ export function renderPqMlsComparison(): HTMLElement {
 
   const status = document.createElement('p');
   status.className = 'muted';
-  status.innerHTML = '<strong>Conceptual comparison only:</strong> the proposed suites are from an Internet-Draft dated 21 July 2026, not a final MLS standard. Selecting them does not change the live group, keys, messages, or ciphersuite. This lab omits credential signatures even for the classical suite.';
+  status.innerHTML = '<strong>Conceptual comparison only:</strong> the proposed suites are from an Internet-Draft dated 1 November 2026, not a final MLS standard. Selecting them does not change the live group, keys, messages, or ciphersuite. This lab omits credential signatures even for the classical suite.';
   root.appendChild(status);
 
   const choices = document.createElement('div');
@@ -104,7 +104,7 @@ export function renderPqMlsComparison(): HTMLElement {
 
   const sources = document.createElement('p');
   sources.className = 'muted';
-  sources.innerHTML = 'Sources: <a href="https://www.rfc-editor.org/rfc/rfc9420#section-17.1" target="_blank" rel="noreferrer">RFC 9420 §17.1</a>; <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-06#section-3.1" target="_blank" rel="noreferrer">MLS PQ ciphersuites draft-06 §3.1</a> and <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-06#section-4" target="_blank" rel="noreferrer">§4 security considerations</a> (21 July 2026, work in progress).';
+  sources.innerHTML = 'Sources: <a href="https://www.rfc-editor.org/rfc/rfc9420#section-17.1" target="_blank" rel="noreferrer">RFC 9420 §17.1</a>; <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-07#section-3.1" target="_blank" rel="noreferrer">MLS PQ ciphersuites draft-07 §3.1</a> and <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-07#section-4" target="_blank" rel="noreferrer">§4 security considerations</a> (1 November 2026, work in progress).';
   root.appendChild(sources);
   return root;
 }
