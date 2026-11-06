@@ -146,7 +146,7 @@ export class RatchetTree {
     let b = 1 << k;
     let p = (x | b) & ~(b << 1);
     // In a left-balanced tree the "natural" formula can land out of range;
-    // walk up until we find a valid ancestor (RFC 9420 §8 tree arithmetic).
+    // walk up until we find a valid ancestor (RFC 9420 Appendix C, Array-Based Trees).
     while (p >= width && b <= width) {
       b <<= 1;
       p = (p | b) & ~(b << 1);
@@ -171,7 +171,7 @@ export class RatchetTree {
     if (k === 0) {
       return null;
     }
-    // RFC 9420 §8.1: the right child is x + 2^(k-1); if that lands past the end
+    // RFC 9420 Appendix C: the right child is x + 2^(k-1); if that lands past the end
     // of a non-power-of-two tree, keep taking raw left children until it's in
     // range so a lone trailing leaf is still reached. The descent uses the pure
     // XOR formula (no width clamp) — left()'s range check is only for callers.

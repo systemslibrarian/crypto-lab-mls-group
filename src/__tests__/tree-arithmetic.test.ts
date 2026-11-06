@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { RatchetTree } from '../tree/ratchet-tree';
 
-describe('ratchet tree arithmetic (RFC 9420 §8.1)', () => {
+describe('ratchet tree arithmetic (RFC 9420 Appendix C)', () => {
   it('places leaves at even node indices', () => {
     const t = new RatchetTree(4);
     expect(t.leaves).toEqual([0, 2, 4, 6]);
