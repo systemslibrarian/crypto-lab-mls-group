@@ -2,7 +2,7 @@
 
 ## What It Is
 
-This project is a browser-first teaching subset of Messaging Layer Security (MLS) and TreeKEM mechanics from RFC 9420. It uses real TreeKEM, X25519, HKDF, and AES-GCM operations, but it is not a complete RFC 9420 implementation: Ed25519 credential signatures, authenticated handshake framing, and confirmation-tag construction/verification are omitted, so commits and application messages in the model are unsigned. The model focuses on large groups where pairwise approaches become expensive.
+This project is a browser-first teaching subset of Messaging Layer Security (MLS) and TreeKEM mechanics from RFC 9420. It uses real TreeKEM, X25519, HKDF, and AES-GCM operations, but it is not a complete RFC 9420 implementation: Ed25519 credential signatures, authenticated handshake framing, and confirmation-tag construction/verification are omitted, so commits and application messages in the model are unsigned. The ratchet tree here is also the draft-era left-balanced shape, with exactly one leaf per member and `2n - 1` nodes; RFC 9420 section 4.1.1 defines the tree over `2^d` leaves ("A tree with 2^d leaves has 2^(d+1) - 1 nodes, including parent nodes"), padding the unused leaves and nodes as blank, so a 3-member group has 4 leaves and 7 nodes there against 3 and 5 here. The model focuses on large groups where pairwise approaches become expensive.
 
 ## When to Use It
 

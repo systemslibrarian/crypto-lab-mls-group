@@ -454,7 +454,7 @@ function renderComparisonPanel(): HTMLDivElement {
   const tbody = document.createElement('tbody');
   const rows = [
     ['Group size scaling', 'Pairwise mesh', 'TreeKEM left-balanced tree'],
-    ['Broadcast cost', 'O(n²) sender work', 'O(log n) path update'],
+    ['Broadcast cost', 'O(n) per sender, O(n²) across the group', 'O(log n) path update'],
     ['Forward secrecy model', 'Pairwise chains', 'Epoch key schedule'],
     ['PCS model', 'Per-pair recovery', 'Commit-driven group recovery'],
     ['Metadata exposure', 'Per-pair sessions', 'Group context + epochs'],
