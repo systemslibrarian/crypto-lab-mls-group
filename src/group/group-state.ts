@@ -30,7 +30,7 @@ interface SenderRatchet {
   appSecret: Uint8Array;
 }
 
-// RFC 9420 §15.3 — per-generation key/nonce derivation from application ratchet
+// RFC 9420 §9.1 — per-generation key/nonce derivation from application ratchet
 async function privateMessageEncrypt(
   appSecret: Uint8Array,
   generation: number,
@@ -41,7 +41,8 @@ async function privateMessageEncrypt(
   const key   = expandWithLabel(appSecret, 'key',        new Uint8Array(), 16);
   const nonce = expandWithLabel(appSecret, 'nonce',      new Uint8Array(), 12);
   const reuseGuard = randomBytes(4);
-  // XOR reuse_guard into nonce bytes 8–11 per RFC 9420 §15.4
+  // XOR reuse_guard into the nonce, per RFC 9420 §6.3.1. The RFC guards the
+  // nonce's first four bytes; this model guards bytes 8–11 instead.
   const finalNonce = new Uint8Array(nonce);
   for (let i = 0; i < 4; i++) finalNonce[8 + i] ^= reuseGuard[i];
 
@@ -54,7 +55,7 @@ async function privateMessageEncrypt(
   return { ciphertext: out, tag };
 }
 
-// Seed a fresh ratchet for a leaf from the epoch's encryption_secret (RFC 9420 §15.2)
+// Seed a fresh ratchet for a leaf from the epoch's encryption_secret (RFC 9420 §9)
 function seedRatchet(encryptionSecret: Uint8Array, leafIndex: number): SenderRatchet {
   const leafIndexBytes = u16be(leafIndex);
   const appSecret = expandWithLabel(encryptionSecret, 'secret', leafIndexBytes, 32);
@@ -201,7 +202,7 @@ export class GroupStateModel {
     this.epochSecret = secrets.epoch;
     this.initSecret = secrets.init; // carried forward to seed the next epoch
     this.epoch += 1;
-    // Reseed all ratchets from the new epoch's encryption_secret (RFC 9420 §15.2)
+    // Reseed all ratchets from the new epoch's encryption_secret (RFC 9420 §9)
     const encryptionSecret = secrets.encryption;
     this.ratchets.clear();
     for (const leaf of this.tree.leaves) {
