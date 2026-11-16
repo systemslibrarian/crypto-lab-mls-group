@@ -19,11 +19,11 @@ function npmInvocation() {
   // on any such install. The same repair is on aes-modes, hybrid-pqc, time-lock-puzzle,
   // timing-oracle, vdf, token-tell, vigenere-break and timing-sidechannel.
   if (process.env.npm_execpath) {
-    return { command: process.execPath, args: [process.env.npm_execpath] };
+    return { command: process.execPath, args: [process.env.npm_execpath], shell: false };
   }
   // Keep a direct `node --test` useful too. The original PATH is retained below, after
   // the temporary fake `gh`, so the platform's npm launcher stays discoverable.
-  return { command: process.platform === 'win32' ? 'npm.cmd' : 'npm', args: [] };
+  return { command: 'npm', args: [], shell: process.platform === 'win32' };
 }
 
 // Replace only the external GitHub boundary; exercise the real npm script.
@@ -40,6 +40,7 @@ function request(exitCode) {
       env: { ...process.env, PATH: dir + delimiter + process.env.PATH, GH_TOKEN: '', PUBLISH_CONTROL_EXIT: String(exitCode) },
       encoding: 'utf8',
       timeout: 30000,
+      shell: npm.shell,
     });
   } finally {
     rmSync(dir, { recursive: true });
