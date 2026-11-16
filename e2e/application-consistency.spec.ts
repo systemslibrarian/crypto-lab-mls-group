@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {auditControlNames,formatControlNameFailures} from './control-names';
 test('authenticated poll disagreement stays separate from shared keys',async({page})=>{
   await page.goto('./');
   await page.locator('#app-compare').click();
@@ -13,4 +14,7 @@ test('authenticated poll disagreement stays separate from shared keys',async({pa
   await expect(page.locator('#app-result')).toContainText('Same edit set and reconciled document: false');
   const results=await new AxeBuilder({page}).include('[aria-labelledby="app-consistency-title"]').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   expect(results.violations).toEqual([]);
+  // axe's `label` rule accepts a bare `placeholder` as an accessible name, so a
+  // deleted label can leave this gate green. See `control-names.ts`.
+  expect(formatControlNameFailures(await auditControlNames(page)),'form controls named only by placeholder/title').toEqual([]);
 });
