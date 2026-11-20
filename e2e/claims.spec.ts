@@ -313,13 +313,18 @@ test('post-compromise security: the exposed secret is still live until the Updat
   const before = await banner(page);
   await page.getByRole('button', { name: /commits an Update to advance the epoch/ }).click();
   await expect(epochStat(page)).toHaveText(String(before.epoch + 1));
-  await expect(pcs).toContainText('Attacker locked out');
+  await expect(pcs).toContainText('The epoch secret changed.');
 
   const healed = await flat(pcs);
   expect(grab(healed, /pre-update epoch: ([0-9a-f]{16})\.\.\./)[1], 'the exposed secret is a record and must not move').toBe(pre);
   const liveAfter = grab(healed, /current epoch: ([0-9a-f]{16})\.\.\./)[1]!;
   expect(liveAfter).not.toBe(pre);
-  expect(healed).toContain('✓ Pre-compromise secret ≠ current epoch — Attacker locked out ✓');
+  // The panel only compares the old and new epoch secrets, so that is all it
+  // may claim: no "attacker locked out" verdict (RFC 9750 §8.3).
+  expect(healed).toContain(
+    '✓ Pre-compromise secret ≠ current epoch The epoch secret changed. This demo doesn’t test recovery from a device or signing-key compromise.',
+  );
+  expect(healed).not.toContain('Attacker locked out');
   expect(healed).not.toContain('Update not yet applied');
 
   // The transcript records the healing commit with both secrets.
@@ -490,5 +495,5 @@ test('guided tour: the nine steps run the whole lifecycle and leave everything r
     'independently derived the same root secret',
   );
   await expect(panel(page, 'Access Control: Removed Member')).toContainText('locked out ✓');
-  await expect(panel(page, 'PCS Recovery Walkthrough')).toContainText('Attacker locked out ✓');
+  await expect(panel(page, 'PCS Recovery Walkthrough')).toContainText('The epoch secret changed.');
 });

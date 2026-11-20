@@ -552,7 +552,9 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void, guard: (fn
     verifyPre.className = same ? 'muted status-warning' : 'muted status-ok';
     verifyPre.textContent = same
       ? '⚠ Pre and post epoch secrets are equal — Update not yet applied'
-      : '✓ Pre-compromise secret\n  ≠ current epoch — Attacker locked out ✓';
+      : '✓ Pre-compromise secret\n  ≠ current epoch\n\nThe epoch secret changed. This demo doesn’t test recovery from a device or signing-key compromise.';
+    // Wrap rather than scroll: the caveat must be readable in the narrow panel.
+    verifyPre.style.whiteSpace = 'pre-wrap';
     root.appendChild(verifyPre);
   }
 
