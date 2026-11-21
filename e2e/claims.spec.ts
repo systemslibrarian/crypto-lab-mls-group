@@ -289,6 +289,10 @@ test('forward secrecy: after the epoch advances the captured key cannot be re-de
   await expect(page.getByRole('button', { name: /Record the message key/ })).toHaveCount(1);
 });
 
+// What the PCS copy used to promise. The lab shows the epoch secret changing,
+// not that an attacker who keeps the device or signing key is shut out.
+const LOCKOUT_PROMISE = /locks? the attacker|attacker is now locked out|locked out of (all|every) future epoch|can no longer follow along/i;
+
 test('post-compromise security: the exposed secret is still live until the Update, then is not', async ({
   page,
 }) => {
@@ -309,6 +313,12 @@ test('post-compromise security: the exposed secret is still live until the Updat
   expect(liveBefore).toBe(pre);
   expect(exposed).toContain('⚠ Pre and post epoch secrets are equal — Update not yet applied');
   expect(exposed).toContain('Alice (leaf 0) — COMPROMISED');
+  // The intro and button may not promise more than the panel shows: an Update
+  // replaces the epoch secret; it does not shut out an attacker who still
+  // controls the device or signing key.
+  expect(exposed).toContain('does not model an attacker who still controls the device or its signing key');
+  expect(exposed).not.toMatch(LOCKOUT_PROMISE);
+  await expect(pcs.getByRole('button', { name: /commits an Update to advance the epoch/ })).not.toHaveText(/heal/i);
 
   const before = await banner(page);
   await page.getByRole('button', { name: /commits an Update to advance the epoch/ }).click();
@@ -326,6 +336,7 @@ test('post-compromise security: the exposed secret is still live until the Updat
   );
   expect(healed).not.toContain('Attacker locked out');
   expect(healed).not.toContain('Update not yet applied');
+  expect(healed).not.toMatch(LOCKOUT_PROMISE);
 
   // The transcript records the healing commit with both secrets.
   const log = await flat(page.locator('.transcript-item').first());
@@ -496,4 +507,6 @@ test('guided tour: the nine steps run the whole lifecycle and leave everything r
   );
   await expect(panel(page, 'Access Control: Removed Member')).toContainText('locked out ✓');
   await expect(panel(page, 'PCS Recovery Walkthrough')).toContainText('The epoch secret changed.');
+  // The tour's PCS narration and every revealed panel stay within what was shown.
+  expect(await page.locator('main').innerText()).not.toMatch(LOCKOUT_PROMISE);
 });

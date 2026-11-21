@@ -100,7 +100,7 @@ function buildUpdateNarration(state: GroupStateModel, leaf: number, prevEpoch: n
     lines: [
       `${memberName(leaf)} chose a new path secret and pushed fresh keys up their direct path: node${path.length === 1 ? '' : 's'} ${path.join(', ') || '(root only)'}.`,
       `Each new node key is encrypted only to its copath subtree, so just the right members can derive it — O(log n) work, not an O(n) broadcast.`,
-      `Epoch ${prevEpoch} → ${state.epoch}. Had ${memberName(leaf)} been compromised before this, the attacker is now locked out: that's post-compromise security.`
+      `Epoch ${prevEpoch} → ${state.epoch}. Had ${memberName(leaf)}'s keys leaked before this, those copies cannot derive the new epoch secret. That is the recovery post-compromise security relies on, and it assumes the attacker no longer controls ${memberName(leaf)}'s device or signing key.`
     ]
   };
 }
@@ -424,7 +424,7 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
 function renderExplainer(): HTMLDivElement {
   const root = panel('Concepts') as HTMLDivElement;
   root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch derives a fresh key schedule and reseeds every sender ratchet, and each message key is discarded after one use. A key compromised today cannot decrypt earlier messages. See the Forward Secrecy Walkthrough to try it.</p></details>`;
-  root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member is compromised, any new Update commit on their direct path replaces the leaked keys, so future epochs are secret again. See the PCS Recovery Walkthrough.</p></details>`;
+  root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member's keys leak, an Update commit on their direct path replaces those keys, so an attacker holding only the leaked copies cannot derive later epochs. An Update does not shut out an attacker who still controls the device or holds the signing key. See the PCS Recovery Walkthrough.</p></details>`;
   root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. TreeKEM arranges members as leaves of a left-balanced binary tree, so a re-key only touches one root-to-leaf direct path — O(log n) ciphertexts per commit.</p></details>`;
   root.innerHTML += `<details><summary>Proposal vs Commit (what the buttons really do)</summary><p>MLS separates <em>proposing</em> a change from <em>committing</em> it. A Proposal (Add / Remove / Update) is a standalone message that only <em>describes</em> an intended change — it does not alter keys or advance the epoch. A <strong>Commit</strong> bundles a set of pending proposals, applies them, runs the TreeKEM path update, and <em>then</em> advances to the next epoch with fresh secrets.</p><p>To keep this demo to one click, each button here stages its proposal and immediately commits it (the committer also does a self-Update so every commit re-keys a path). So in the real protocol an "Update" you see is two objects: an Update <em>proposal</em> plus the <em>Commit</em> that carries it — and only the Commit rolls the epoch.</p></details>`;
   root.innerHTML += `<details><summary>What's Real, What's Simulated</summary><div class="grid-list"><div><h3>Real in this demo:</h3><p>X25519 scalar multiplication, SHA-256, HKDF, AES-128-GCM, ExpandWithLabel key-schedule derivations, TreeKEM UpdatePath math, and DHKEM encapsulation/decapsulation.</p></div><div><h3>Simulated for browser context:</h3><p>Delivery service fan-out is in-memory, KeyPackages are generated in-session, and identity keys are session-local.</p></div><div><h3>Not included (out of scope):</h3><p>Ed25519 credential signatures and verification, authenticated handshake framing, construction or verification of confirmation tags, external PSKs, group re-initialization flows, and federated inter-group protocols. Commits and application messages in this teaching model are unsigned.</p></div></div></details>`;
@@ -487,7 +487,7 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void, guard: (fn
   const intro = document.createElement('p');
   intro.className = 'muted';
   intro.textContent =
-    'Post-compromise security means that even after an attacker steals a member’s keys, one fresh Update from that member locks the attacker back out.';
+    'Post-compromise security is the recovery MLS aims for after a member’s keys leak: once that member commits a fresh Update, later epochs are derived from secrets the leaked copies do not contain. This walkthrough shows the epoch secret changing. It does not model an attacker who still controls the device or its signing key, and an Update alone does not shut that attacker out.';
   root.appendChild(intro);
 
   const aliceName = memberName(0);
@@ -528,8 +528,8 @@ function renderPcsPanel(state: GroupStateModel, rerender: () => void, guard: (fn
     root.appendChild(pre);
 
     const recoverBtn = document.createElement('button');
-    recoverBtn.textContent = `🔐 ${aliceName} commits Update (heals compromise)`;
-    recoverBtn.setAttribute('aria-label', `${aliceName} commits an Update to advance the epoch and lock the attacker out`);
+    recoverBtn.textContent = `🔐 ${aliceName} commits an Update (replaces the exposed secret)`;
+    recoverBtn.setAttribute('aria-label', `${aliceName} commits an Update to advance the epoch and replace the exposed epoch secret`);
     recoverBtn.onclick = () => void guard(async () => {
       const preEpoch = state.epochSecret.slice();
       await commitWithProposals(state, [{ type: 'update', leafIndex: 0 }], 0);
@@ -606,7 +606,7 @@ function renderScenarioPanel(state: GroupStateModel, rerender: () => void, guard
           lines: [
             `An attacker is assumed to hold ${memberName(0)}'s current keys, so the present epoch secret is exposed.`,
             `Use the PCS Recovery Walkthrough to have ${memberName(0)} commit an Update.`,
-            'After that Update, the epoch secret changes and the attacker can no longer follow along — post-compromise security.'
+            `After that Update the epoch secret changes, so the leaked copies cannot derive it. An attacker who still controls ${memberName(0)}'s device or signing key is not shut out by an Update; this demo does not test that case.`
           ]
         };
         rerender();
@@ -816,7 +816,7 @@ const TOUR: TourStep[] = [
   { title: 'Everyone agrees on the new secret', body: 'That Update just ran the convergence proof below: every member independently arrived at the SAME root secret — the committer by ratcheting, the others by decrypting one path secret. Scroll to the TreeKEM Convergence panel to see the matching values.', act: 'converge', cta: 'Prove it & continue ▶' },
   { title: 'Remove a member', body: 'A member is removed. Their leaf and entire direct path are blanked, then re-keyed by the committer, so the keys they knew are now worthless to them.', act: 'remove', cta: 'Remove & continue ▶' },
   { title: 'The removed member is locked out', body: 'This just ran the access-control demo below: the group sent a fresh message and the removed member failed to decrypt it, while a current member succeeded. See the Access Control panel.', act: 'access', cta: 'Show lockout & continue ▶' },
-  { title: 'Heal a compromise', body: 'Finally we simulate a compromise of a member and immediately heal it with an Update. After that commit the attacker is locked out of all future epochs — post-compromise security. See the PCS Recovery panel.', act: 'pcs', cta: 'Heal & continue ▶' },
+  { title: 'Heal a compromise', body: 'Finally we simulate a compromise of a member, who then commits an Update. The new epoch secret comes from fresh path material, so an attacker holding only the leaked copies cannot derive it. That recovery assumes the attacker no longer controls the device or its signing key, which this demo does not test. See the PCS Recovery panel.', act: 'pcs', cta: 'Heal & continue ▶' },
   { title: 'That is the whole lifecycle', body: 'Add and remove members, send messages, watch epochs roll, and explore the live key schedule — all backed by real cryptography. Tour complete.', act: null, cta: 'Finish ✓' }
 ];
 
@@ -876,12 +876,12 @@ async function runTourAction(state: GroupStateModel, act: string): Promise<void>
       const prevEpoch = state.epoch;
       await commitWithProposals(state, [{ type: 'update', leafIndex: 0 }], 0);
       state.narration = {
-        headline: `${memberName(0)} healed the compromise`,
+        headline: `${memberName(0)} committed a recovery Update`,
         tone: 'success',
         lines: [
           `${memberName(0)} committed an Update, advancing the epoch ${prevEpoch} → ${state.epoch}.`,
-          'The new epoch secret is derived from fresh path material the attacker never saw.',
-          'Even though the attacker held the old keys, they are now locked out of every future epoch — post-compromise security.'
+          'The new epoch secret is derived from fresh path material the leaked copies do not contain.',
+          'An attacker holding only those copies cannot follow the new epoch. One who still controls the device or signing key is not shut out by an Update, and this demo does not test that case.'
         ]
       };
       break;
@@ -1141,7 +1141,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   main.appendChild(gated(state, { key: 'keySchedule', title: 'Key Schedule', pitch: 'See the live epoch secrets: how init_secret + commit_secret are mixed and expanded into every key this epoch uses.' }, () => renderKeySchedule(state), rerender));
   main.appendChild(gated(state, { key: 'convergence', title: 'TreeKEM Convergence', pitch: 'The core proof: every member independently derives the SAME root secret — and it equals this epoch’s commit_secret.' }, () => renderConvergencePanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'fs', title: 'Forward Secrecy Walkthrough', pitch: 'Capture a message key, advance the epoch, and watch the same derivation yield a different key — the old one is gone.' }, () => renderFsPanel(state, rerender, guard), rerender));
-  main.appendChild(gated(state, { key: 'pcs', title: 'PCS Recovery Walkthrough', pitch: 'Mark a member compromised, then heal it with one Update commit that locks the attacker out of all future epochs.' }, () => renderPcsPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'pcs', title: 'PCS Recovery Walkthrough', pitch: 'Mark a member compromised, then have them commit an Update and watch the epoch secret change. The demo does not test an attacker who still controls the device or signing key.' }, () => renderPcsPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'access', title: 'Access Control: Removed Member', pitch: 'Prove a removed member is locked out: the group sends a real AES-GCM message they can no longer decrypt.' }, () => renderAccessPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'scenarios', title: 'Scenario Presets', pitch: 'One-click stories (add, remove, PCS recovery, churn) that each run real commits end to end.' }, () => renderScenarioPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'concepts', title: 'Concepts', pitch: 'Plain-English explainers: forward secrecy, post-compromise security, why a tree, and what’s real vs simulated here.' }, () => renderExplainer(), rerender));

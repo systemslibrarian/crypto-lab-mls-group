@@ -27,7 +27,7 @@ In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their 
 - Send application messages encrypted with real per-message AES-128-GCM keys from each sender's ratchet.
 - Read the key schedule as a derivation diagram (init_secret + commit_secret → joiner → epoch → per-epoch secrets) with live byte values, the two secrets this demo actually uses shown up front and the other seven grouped (with one-word purposes) behind a disclosure.
 - Step through a **Forward Secrecy** walkthrough: capture a message key, advance the epoch, and see the same derivation produce a different key — the old one is gone.
-- Step through a **Post-Compromise Security** walkthrough: mark a member compromised, then have them commit an Update to lock the attacker out.
+- Step through a **Post-Compromise Security** walkthrough: mark a member compromised, then have them commit an Update and watch the epoch secret change. The walkthrough does not test an attacker who still controls the device or signing key.
 - Watch **Access Control** in action: the group sends a real message and a removed member fails to decrypt it while a current member succeeds.
 - Run one-click scenario presets (add, remove, PCS recovery, churn drill), each performing real cryptographic commits.
 - Open the optional **Post-Quantum MLS Draft** panel. Select the classical suite modeled here, a proposed ML-KEM-768 + X25519 suite with Ed25519 signatures, or a proposed hybrid suite with ML-DSA-44 signatures. The panel separately labels the intended confidentiality and authentication properties. Its selection is an explanation only: the live group still uses classical X25519, HKDF-SHA256, and AES-128-GCM, and this lab omits even the classical signature layer.
