@@ -26,7 +26,7 @@ In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their 
 - See the **TreeKEM Convergence** proof: every member independently derives the *same* root secret (the committer by ratcheting, the rest by HPKE-decrypting one path secret) — and the demo shows that shared secret **is** the live epoch's `commit_secret`, matching the Key Schedule panel's `commit_secret` chip byte-for-byte.
 - Send application messages encrypted with real per-message AES-128-GCM keys from each sender's ratchet.
 - Read the key schedule as a derivation diagram (init_secret + commit_secret → joiner → epoch → per-epoch secrets) with live byte values, the two secrets this demo actually uses shown up front and the other seven grouped (with one-word purposes) behind a disclosure.
-- Step through a **Forward Secrecy** walkthrough: capture a message key, advance the epoch, and see the same derivation produce a different key — the old one is gone.
+- Step through a **Forward Secrecy** walkthrough: compare the same sender’s first message key across two epochs. The demo displays both values. Forward secrecy in a deployment depends on erasing old key material; a recipient who retains the matching key can still decrypt.
 - Step through a **Post-Compromise Security** walkthrough: mark a member compromised, then have them commit an Update and watch the epoch secret change. The walkthrough does not test an attacker who still controls the device or signing key.
 - Watch **Access Control** in action: the group sends a real message and a removed member fails to decrypt it while a current member succeeds.
 - Run one-click scenario presets (add, remove, PCS recovery, churn drill), each performing real cryptographic commits.
@@ -41,7 +41,7 @@ In the live demo, members have names (Alice, Bob, Charlie, …) mapped to their 
 - Untrusted delivery service: MLS relies on an external delivery service to order and fan out handshake messages; if it drops, reorders, or withholds commits, members can desynchronize epochs and fail to converge on the shared group secret.
 - Unauthenticated KeyPackages: adding a member from a forged or stale KeyPackage can let an attacker join or be impersonated — KeyPackages must be signature-verified and checked for freshness.
 - Missed commits and state loss: a member that fails to process a commit cannot derive the new epoch secret and is locked out until it replays the commit/welcome chain in order.
-- Post-compromise security is not automatic: a leaked leaf key keeps decrypting group traffic until the affected member performs an Update commit, so healing depends on members actually rotating.
+- Post-compromise security is not automatic: an Update can restore future confidentiality after an isolated state compromise when fresh secret material is introduced and the attacker has lost access. The walkthrough compares epoch secrets; it does not test an ongoing device or signing-key compromise.
 - Metadata exposure: MLS protects message content, but the delivery service still observes group membership, size, and message timing.
 
 ## Real-World Usage

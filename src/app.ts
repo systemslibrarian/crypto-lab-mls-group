@@ -111,7 +111,7 @@ function buildSendNarration(state: GroupStateModel, leaf: number, gen: number): 
     tone: 'info',
     lines: [
       `Sealed with AES-128-GCM under a one-time key from ${memberName(leaf)}'s sender ratchet (generation ${gen}).`,
-      `The ratchet then advances and discards that key — so this exact message can never be decrypted again, even by ${memberName(leaf)}. That's forward secrecy.`,
+      `The sender ratchet advances. An intended recipient can still read the message with the matching key. Forward secrecy protects earlier messages from later compromise once the keys needed to read them have been erased.`,
       `The AEAD's associated data binds the ciphertext to epoch ${state.epoch}, generation ${gen}, and sender leaf ${leaf}, so it can't be replayed into another context.`
     ]
   };
@@ -337,7 +337,7 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
   const intro = document.createElement('p');
   intro.className = 'muted';
   intro.textContent =
-    'Forward secrecy means a key stolen today cannot unlock yesterday’s messages. Capture a message key, advance the epoch, and watch the same derivation produce a different key — the old one is gone.';
+    'Compare the first message key for the same sender across two epochs. The walkthrough keeps a copy of the old key so you can compare it. Forward secrecy depends on deleting old key material after use.';
   root.appendChild(intro);
 
   const snap = state.fsSnapshot;
@@ -346,8 +346,8 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
   if (!snap) {
     const leaf = state.activeMembers()[0] ?? 0;
     const btn = document.createElement('button');
-    btn.textContent = `📨 Capture ${memberName(leaf)}'s current message key`;
-    btn.setAttribute('aria-label', `Record the message key ${memberName(leaf)} would use right now, in epoch ${state.epoch}`);
+    btn.textContent = `📨 Capture ${memberName(leaf)}'s first message key for this epoch`;
+    btn.setAttribute('aria-label', `Record the first message key for ${memberName(leaf)} in epoch ${state.epoch}`);
     btn.onclick = () => void guard(async () => {
       const encSecret = state.epochSecrets.encryption;
       state.fsSnapshot = {
@@ -358,7 +358,7 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
       };
       state.transcript.unshift({
         kind: 'application',
-        summary: `FS demo: captured ${memberName(leaf)}'s message key`,
+        summary: `FS demo: captured ${memberName(leaf)}'s first message key`,
         detail: `epoch ${state.epoch} message key recorded for comparison`,
         epoch: state.epoch
       });
@@ -404,7 +404,7 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
       `same derivation, now in epoch ${state.epoch}:\n` +
       `  message key:       ${nowHex}\n\n` +
       (differs
-        ? `✓ Different key — the epoch-${snap.epoch} key cannot be reproduced\n  from any current secret. Past messages stay locked.`
+        ? `✓ Different key for the first generation in epoch ${state.epoch}.\n  The saved epoch-${snap.epoch} key remains visible above for comparison.`
         : '⚠ keys match — unexpected');
     root.appendChild(compare);
 
@@ -423,7 +423,7 @@ function renderFsPanel(state: GroupStateModel, rerender: () => void, guard: (fn:
 
 function renderExplainer(): HTMLDivElement {
   const root = panel('Concepts') as HTMLDivElement;
-  root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch derives a fresh key schedule and reseeds every sender ratchet, and each message key is discarded after one use. A key compromised today cannot decrypt earlier messages. See the Forward Secrecy Walkthrough to try it.</p></details>`;
+  root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch reseeds the sender ratchets. As a ratchet advances, deleting old secrets protects earlier messages from later compromise. Recipients can still decrypt with retained matching keys, and copies of plaintext remain readable. The walkthrough compares two epochs’ first message keys.</p></details>`;
   root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member's keys leak, an Update commit on their direct path replaces those keys, so an attacker holding only the leaked copies cannot derive later epochs. An Update does not shut out an attacker who still controls the device or holds the signing key. See the PCS Recovery Walkthrough.</p></details>`;
   root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. TreeKEM arranges members as leaves of a left-balanced binary tree, so a re-key only touches one root-to-leaf direct path — O(log n) ciphertexts per commit.</p></details>`;
   root.innerHTML += `<details><summary>Proposal vs Commit (what the buttons really do)</summary><p>MLS separates <em>proposing</em> a change from <em>committing</em> it. A Proposal (Add / Remove / Update) is a standalone message that only <em>describes</em> an intended change — it does not alter keys or advance the epoch. A <strong>Commit</strong> bundles a set of pending proposals, applies them, runs the TreeKEM path update, and <em>then</em> advances to the next epoch with fresh secrets.</p><p>To keep this demo to one click, each button here stages its proposal and immediately commits it (the committer also does a self-Update so every commit re-keys a path). So in the real protocol an "Update" you see is two objects: an Update <em>proposal</em> plus the <em>Commit</em> that carries it — and only the Commit rolls the epoch.</p></details>`;
@@ -811,7 +811,7 @@ interface TourStep { title: string; body: string; act: string | null; cta?: stri
 const TOUR: TourStep[] = [
   { title: 'Welcome to the MLS Group Lab', body: 'You are looking at a real end-to-end encrypted group. Every key below is computed with real X25519, HKDF-SHA256 and AES-128-GCM — nothing is faked. This tour walks through the whole group lifecycle in a few clicks.', act: null, cta: 'Begin ▶' },
   { title: 'Add a member', body: 'A new member is added and the change is committed. Watch the ratchet tree gain a leaf and the epoch advance. The newcomer gets a Welcome with the current secrets, but cannot read anything sent before they joined.', act: 'add', cta: 'Add & continue ▶' },
-  { title: 'Send a message', body: 'A member sends an encrypted message, sealed under a one-time key from their sender ratchet. The ratchet then advances and discards that key — so this message can never be decrypted again. That is forward secrecy.', act: 'send', cta: 'Send & continue ▶' },
+  { title: 'Send a message', body: 'A member sends an encrypted message and advances their sender ratchet. A recipient with the matching key can still decrypt it. Forward secrecy depends on deleting old key material after use.', act: 'send', cta: 'Send & continue ▶' },
   { title: 'Re-key with an Update', body: 'A member runs an Update. Watch their direct path light up and climb to the root, and the epoch roll over. Only one root-to-leaf path changes — that is the O(log n) re-key at the heart of TreeKEM.', act: 'update', cta: 'Update & continue ▶' },
   { title: 'Everyone agrees on the new secret', body: 'That Update just ran the convergence proof below: every member independently arrived at the SAME root secret — the committer by ratcheting, the others by decrypting one path secret. Scroll to the TreeKEM Convergence panel to see the matching values.', act: 'converge', cta: 'Prove it & continue ▶' },
   { title: 'Remove a member', body: 'A member is removed. Their leaf and entire direct path are blanked, then re-keyed by the committer, so the keys they knew are now worthless to them.', act: 'remove', cta: 'Remove & continue ▶' },
@@ -1033,7 +1033,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   const whyText = document.createElement('p');
   whyText.className = 'cl-hero-why-text';
   whyText.textContent =
-    'MLS secures group chats for billions of users at scale. Its tree keeps re-keying cheap at O(log n), so one leaked device is contained: past messages stay secret and future epochs heal after compromise.';
+    'MLS uses a tree to update group keys as members join, leave or update. Explore how key erasure protects past traffic and how a fresh update can restore future secrecy after control of a compromised device is regained.';
   why.appendChild(whyLabel);
   why.appendChild(whyText);
 
@@ -1140,7 +1140,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   // reveal-all control, or their own teaser button).
   main.appendChild(gated(state, { key: 'keySchedule', title: 'Key Schedule', pitch: 'See the live epoch secrets: how init_secret + commit_secret are mixed and expanded into every key this epoch uses.' }, () => renderKeySchedule(state), rerender));
   main.appendChild(gated(state, { key: 'convergence', title: 'TreeKEM Convergence', pitch: 'The core proof: every member independently derives the SAME root secret — and it equals this epoch’s commit_secret.' }, () => renderConvergencePanel(state, rerender, guard), rerender));
-  main.appendChild(gated(state, { key: 'fs', title: 'Forward Secrecy Walkthrough', pitch: 'Capture a message key, advance the epoch, and watch the same derivation yield a different key — the old one is gone.' }, () => renderFsPanel(state, rerender, guard), rerender));
+  main.appendChild(gated(state, { key: 'fs', title: 'Forward Secrecy Walkthrough', pitch: 'Compare one sender’s first message key before and after an epoch update. The lesson retains the first value for comparison.' }, () => renderFsPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'pcs', title: 'PCS Recovery Walkthrough', pitch: 'Mark a member compromised, then have them commit an Update and watch the epoch secret change. The demo does not test an attacker who still controls the device or signing key.' }, () => renderPcsPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'access', title: 'Access Control: Removed Member', pitch: 'Prove a removed member is locked out: the group sends a real AES-GCM message they can no longer decrypt.' }, () => renderAccessPanel(state, rerender, guard), rerender));
   main.appendChild(gated(state, { key: 'scenarios', title: 'Scenario Presets', pitch: 'One-click stories (add, remove, PCS recovery, churn) that each run real commits end to end.' }, () => renderScenarioPanel(state, rerender, guard), rerender));

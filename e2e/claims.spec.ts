@@ -249,14 +249,14 @@ test('convergence: every member derives one root secret, and it is this epoch co
   expect(grab(keySchedule, /commit_secret ([0-9a-f]{16})…/i)[1]).toBe(shared);
 });
 
-test('forward secrecy: after the epoch advances the captured key cannot be re-derived', async ({
+test('forward secrecy: first-generation keys change across epochs and the captured example remains visible', async ({
   page,
 }) => {
   await open(page);
   await revealAll(page);
 
   const fs = panel(page, 'Forward Secrecy Walkthrough');
-  await page.getByRole('button', { name: /Record the message key/ }).click();
+  await page.getByRole('button', { name: /Record the first message key/ }).click();
   await expect(fs).toContainText('captured in epoch');
 
   const captured = grab(
@@ -278,15 +278,16 @@ test('forward secrecy: after the epoch advances the captured key cannot be re-de
   expect(Number(nowKey[1])).toBe(now.epoch);
   // The claim: the same derivation now yields a different key.
   expect(nowKey[2]).not.toBe(capturedKey);
-  expect(after).toContain(`✓ Different key — the epoch-${capturedEpoch} key cannot be reproduced`);
+  expect(after).toContain(`✓ Different key for the first generation in epoch ${now.epoch}`);
   expect(after, 'the panel must not silently pass when the keys match').not.toContain('keys match');
   // The captured key is still displayed for comparison, unchanged.
   expect(after).toContain(capturedKey);
+  expect(after).toContain(`saved epoch-${capturedEpoch} key remains visible`);
 
   // Reset returns the walkthrough to step 1.
   await page.getByRole('button', { name: /Clear the captured key/ }).click();
   await expect(fs).not.toContainText('captured in epoch');
-  await expect(page.getByRole('button', { name: /Record the message key/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Record the first message key/ })).toHaveCount(1);
 });
 
 // What the PCS copy used to promise. The lab shows the epoch secret changing,
@@ -391,6 +392,7 @@ test('send: the transcript records the epoch, generation and ciphertext size of 
   const message = 'transfer=42&to=bob';
   await page.locator('#msg-input-leaf-0').fill(message);
   await page.getByRole('button', { name: /Send an encrypted message from Alice \(leaf 0\)/ }).click();
+  await expect(page.locator('.narration')).toContainText('An intended recipient can still read the message with the matching key.');
   await expect(page.locator('.transcript-item').first()).toContainText('APPLICATION');
 
   const state = await banner(page);
