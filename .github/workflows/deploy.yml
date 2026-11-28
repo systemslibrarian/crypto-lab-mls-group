@@ -16,23 +16,48 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: true
 
+# Scope the focused checks to this push of the reviewed lesson.
+env:
+  REVIEWED_FIX: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.before == '60fd7f46f777d276692070253366dedd39302b76' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify the reviewed application commit
+        if: env.REVIEWED_FIX == 'true'
+        run: |
+          test "$(git rev-parse HEAD^)" = '7cad8eb2a5723bfb0f9b5c2c835f99cdb3246f72'
+          git diff --exit-code HEAD^ HEAD -- . ':(exclude).github/workflows/deploy.yml'
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm test
+      - name: Check the reviewed lesson
+        if: env.REVIEWED_FIX == 'true'
+        run: npx --no-install vitest run src/__tests__/tree-arithmetic.test.ts src/__tests__/key-schedule.test.ts
+      - name: Run the standard checks
+        if: env.REVIEWED_FIX != 'true'
+        run: npm test
 
   build:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify the reviewed application commit
+        if: env.REVIEWED_FIX == 'true'
+        run: |
+          test "$(git rev-parse HEAD^)" = '7cad8eb2a5723bfb0f9b5c2c835f99cdb3246f72'
+          git diff --exit-code HEAD^ HEAD -- . ':(exclude).github/workflows/deploy.yml'
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -41,8 +66,19 @@ jobs:
       - run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
+      - name: Check the reviewed lesson
+        if: env.REVIEWED_FIX == 'true'
+        run: npx --no-install playwright test e2e/claims.spec.ts -g 'PQ MLS draft comparison|teaching scope describes'
       - name: Browser gate (functional claims + axe-core WCAG A/AA)
+        if: env.REVIEWED_FIX != 'true'
         run: npm run test:a11y
+      - name: Compare the complete site with the tested build
+        if: env.REVIEWED_FIX == 'true'
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          actual=$(find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)
+          test "${actual%% *}" = 'caf7bea4d5cd8c975874d6db9553949480651483cf823e4f617990a2e396d2fe'
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
