@@ -119,7 +119,7 @@ test('PQ MLS draft comparison distinguishes confidentiality from authentication 
   const pq = panel(page, 'Post-Quantum MLS Draft');
 
   await expect(pq).toContainText('Conceptual comparison only');
-  await expect(pq).toContainText('Internet-Draft dated 1 November 2026');
+  await expect(pq).toContainText('Internet-Draft dated 18 November 2026');
   await expect(pq).toContainText('This lab omits credential signatures');
   await expect(pq).toContainText('MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519');
 
@@ -129,13 +129,13 @@ test('PQ MLS draft comparison distinguishes confidentiality from authentication 
   await expect(pq.locator('.pq-mls-result')).toContainText('passive attackers only');
   await expect(pq.locator('.pq-mls-result')).toContainText('inject KeyPackages or group operations');
   await expect(pq.locator('.pq-mls-result')).toContainText('not full post-quantum security');
-  await expect(pq.getByRole('link', { name: '§4 security considerations' })).toHaveAttribute('href', 'https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-07#section-4');
+  await expect(pq.getByRole('link', { name: '§4 security considerations' })).toHaveAttribute('href', 'https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-08#section-4');
 
   await pq.getByRole('button', { name: 'Draft hybrid KEM + post-quantum signature' }).click();
   await expect(pq.locator('.pq-mls-result')).toContainText('MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44');
   await expect(pq.locator('.pq-mls-result')).toContainText('ML-DSA-44 (post-quantum)');
   await expect(pq.locator('.pq-mls-result')).toContainText('Designed for post-quantum authentication');
-  await expect(pq.getByRole('link', { name: 'MLS PQ ciphersuites draft-07 §3.1' })).toHaveAttribute('href', /draft-ietf-mls-pq-ciphersuites-07/);
+  await expect(pq.getByRole('link', { name: 'MLS PQ ciphersuites draft-08 §3.1' })).toHaveAttribute('href', /draft-ietf-mls-pq-ciphersuites-08/);
 
   expect(await banner(page)).toEqual(before);
   await expect(page.locator('.status-banner')).toContainText('MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519');
@@ -511,4 +511,11 @@ test('guided tour: the nine steps run the whole lifecycle and leave everything r
   await expect(panel(page, 'PCS Recovery Walkthrough')).toContainText('The epoch secret changed.');
   // The tour's PCS narration and every revealed panel stay within what was shown.
   expect(await page.locator('main').innerText()).not.toMatch(LOCKOUT_PROMISE);
+});
+
+test('teaching scope describes the unsigned group and its simplified message flow', async ({ page }) => {
+  await page.goto('.');
+  await expect(page.locator('.cl-hero-sub')).toContainText('Unsigned teaching subset');
+  await expect(page.locator('#implementation-scope')).toContainText('without validating and consuming a separate KeyPackage');
+  await expect(page.locator('#implementation-scope')).toContainText('last four bytes');
 });

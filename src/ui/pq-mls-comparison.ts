@@ -1,6 +1,6 @@
 import { MLS_CIPHERSUITE } from '../crypto/ciphersuite';
 
-// Examples from RFC 9420 and draft-ietf-mls-pq-ciphersuites-07, Table 1.
+// Examples from RFC 9420 and draft-ietf-mls-pq-ciphersuites-08, Table 1.
 // These are labels for a comparison exercise, not selectable crypto in this lab.
 const OPTIONS = [
   {
@@ -42,12 +42,12 @@ export function renderPqMlsComparison(): HTMLElement {
   root.appendChild(heading);
 
   const intro = document.createElement('p');
-  intro.textContent = 'Compare the classical suite modeled here with two proposed suites. Choose a suite to see what its KEM and signature protect.';
+  intro.textContent = 'Compare the classical suite modeled here with two proposed suites. Table 1 lists the two hybrid examples as 0x0010 and 0x0020. Choose a suite to see what its KEM and signature protect.';
   root.appendChild(intro);
 
   const status = document.createElement('p');
   status.className = 'muted';
-  status.innerHTML = '<strong>Conceptual comparison only:</strong> the proposed suites are from an Internet-Draft dated 1 November 2026, not a final MLS standard. Selecting them does not change the live group, keys, messages, or ciphersuite. This lab omits credential signatures even for the classical suite.';
+  status.innerHTML = '<strong>Conceptual comparison only:</strong> the proposed suites are from an Internet-Draft dated 18 November 2026, not a final MLS standard. Selecting them does not change the live group, keys, messages, or ciphersuite. This lab omits credential signatures even for the classical suite.';
   root.appendChild(status);
 
   const choices = document.createElement('div');
@@ -104,7 +104,7 @@ export function renderPqMlsComparison(): HTMLElement {
 
   const sources = document.createElement('p');
   sources.className = 'muted';
-  sources.innerHTML = 'Sources: <a href="https://www.rfc-editor.org/rfc/rfc9420#section-17.1" target="_blank" rel="noreferrer">RFC 9420 §17.1</a>; <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-07#section-3.1" target="_blank" rel="noreferrer">MLS PQ ciphersuites draft-07 §3.1</a> and <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-07#section-4" target="_blank" rel="noreferrer">§4 security considerations</a> (1 November 2026, work in progress).';
+  sources.innerHTML = 'Sources: <a href="https://www.rfc-editor.org/rfc/rfc9420#section-17.1" target="_blank" rel="noreferrer">RFC 9420 §17.1</a>; <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-08#section-3.1" target="_blank" rel="noreferrer">MLS PQ ciphersuites draft-08 §3.1</a> and <a href="https://datatracker.ietf.org/doc/html/draft-ietf-mls-pq-ciphersuites-08#section-4" target="_blank" rel="noreferrer">§4 security considerations</a> (18 November 2026, work in progress).';
   root.appendChild(sources);
   return root;
 }

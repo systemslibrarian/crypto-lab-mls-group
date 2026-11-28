@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Interactive MLS group messaging demonstration with TreeKEM, cryptographic key schedule, and RFC 9420 compliance",
+  "description": "Interactive MLS group messaging demonstration with TreeKEM, cryptographic key schedule, and an unsigned teaching subset of RFC 9420",
   "homepage": "https://systemslibrarian.github.io/crypto-lab-mls-group/",
   "repository": {
     "type": "git",

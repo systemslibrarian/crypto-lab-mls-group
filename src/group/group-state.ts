@@ -41,7 +41,7 @@ async function privateMessageEncrypt(
   const key   = expandWithLabel(appSecret, 'key',        new Uint8Array(), 16);
   const nonce = expandWithLabel(appSecret, 'nonce',      new Uint8Array(), 12);
   const reuseGuard = randomBytes(4);
-  // XOR reuse_guard into the nonce, per RFC 9420 §6.3.1. The RFC guards the
+  // Local teaching layout. RFC 9420 §6.3.1 guards the
   // nonce's first four bytes; this model guards bytes 8–11 instead.
   const finalNonce = new Uint8Array(nonce);
   for (let i = 0; i < 4; i++) finalNonce[8 + i] ^= reuseGuard[i];

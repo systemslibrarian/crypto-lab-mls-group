@@ -75,7 +75,7 @@ function buildAddNarration(state: GroupStateModel, addedLeaf: number | undefined
     lines: [
       `A leaf was allocated${addedLeaf !== undefined ? ` (leaf ${addedLeaf})` : ''} and ${name}'s KeyPackage installed there.`,
       `${memberName(0)} committed the change, so the epoch advanced ${prevEpoch} → ${state.epoch} and every member re-derived the new epoch secret.`,
-      `${name} receives a Welcome carrying the current group secrets — they can read new messages but cannot recover anything sent before they joined.`
+      `${name} is added to the in-memory group at the new epoch. The lab builds an illustrative Welcome but does not process it on a separate joining client.`
     ]
   };
 }
@@ -99,7 +99,7 @@ function buildUpdateNarration(state: GroupStateModel, leaf: number, prevEpoch: n
     tone: 'success',
     lines: [
       `${memberName(leaf)} chose a new path secret and pushed fresh keys up their direct path: node${path.length === 1 ? '' : 's'} ${path.join(', ') || '(root only)'}.`,
-      `Each new node key is encrypted only to its copath subtree, so just the right members can derive it — O(log n) work, not an O(n) broadcast.`,
+      `The direct path has logarithmic height. This model seals path secrets separately to the other active leaves, so the total number of ciphertexts grows linearly with membership.`,
       `Epoch ${prevEpoch} → ${state.epoch}. Had ${memberName(leaf)}'s keys leaked before this, those copies cannot derive the new epoch secret. That is the recovery post-compromise security relies on, and it assumes the attacker no longer controls ${memberName(leaf)}'s device or signing key.`
     ]
   };
@@ -223,7 +223,7 @@ function glossInto(target: HTMLElement, line: string, used: Set<string>): void {
 // ── "what just happened" narration (full width) ─────────────────────────────
 function renderNarration(state: GroupStateModel): HTMLElement {
   const n: Narration = state.narration ?? {
-    headline: 'Welcome — this is a live MLS group',
+    headline: 'Welcome to the unsigned MLS teaching group',
     tone: 'info',
     lines: [
       `The group starts with ${state.activeMembers().map(memberName).join(', ')}. Every key below is real: X25519, HKDF-SHA256, AES-128-GCM.`,
@@ -260,7 +260,7 @@ function renderKeySchedule(state: GroupStateModel): HTMLDivElement {
   const intro = document.createElement('p');
   intro.className = 'muted';
   intro.textContent =
-    'Two inputs seed each epoch: init_secret carried from the previous epoch, and commit_secret from this commit’s TreeKEM path. Mixing both is what delivers forward secrecy and post-compromise security. Showing first 8 bytes of each.';
+    'Two inputs seed each epoch: init_secret carried from the previous epoch, and commit_secret from this commit’s TreeKEM path. The displayed derivation omits the serialized GroupContext and the PSK input that bind the RFC key schedule. Showing first 8 bytes of each.';
   root.appendChild(intro);
 
   const s = state.epochSecrets;
@@ -425,7 +425,7 @@ function renderExplainer(): HTMLDivElement {
   const root = panel('Concepts') as HTMLDivElement;
   root.innerHTML += `<details><summary>Forward secrecy</summary><p>Each epoch reseeds the sender ratchets. As a ratchet advances, deleting old secrets protects earlier messages from later compromise. Recipients can still decrypt with retained matching keys, and copies of plaintext remain readable. The walkthrough compares two epochs’ first message keys.</p></details>`;
   root.innerHTML += `<details><summary>Post-compromise security</summary><p>After a member's keys leak, an Update commit on their direct path replaces those keys, so an attacker holding only the leaked copies cannot derive later epochs. An Update does not shut out an attacker who still controls the device or holds the signing key. See the PCS Recovery Walkthrough.</p></details>`;
-  root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. TreeKEM arranges members as leaves of a left-balanced binary tree, so a re-key only touches one root-to-leaf direct path — O(log n) ciphertexts per commit.</p></details>`;
+  root.innerHTML += `<details><summary>Why a tree? MLS vs Double Ratchet at scale</summary><p>Pairwise Double Ratchet needs O(n²) messages to re-key a group. In an ideally populated MLS tree, copath parent keys let one ciphertext serve several recipients. The teaching tree changes O(log n) nodes but seals to individual recipient leaves. With n active members it sends n − 1 path ciphertexts for a full update.</p></details>`;
   root.innerHTML += `<details><summary>Proposal vs Commit (what the buttons really do)</summary><p>MLS separates <em>proposing</em> a change from <em>committing</em> it. A Proposal (Add / Remove / Update) is a standalone message that only <em>describes</em> an intended change — it does not alter keys or advance the epoch. A <strong>Commit</strong> bundles a set of pending proposals, applies them, runs the TreeKEM path update, and <em>then</em> advances to the next epoch with fresh secrets.</p><p>To keep this demo to one click, each button here stages its proposal and immediately commits it (the committer also does a self-Update so every commit re-keys a path). So in the real protocol an "Update" you see is two objects: an Update <em>proposal</em> plus the <em>Commit</em> that carries it — and only the Commit rolls the epoch.</p></details>`;
   root.innerHTML += `<details><summary>What's Real, What's Simulated</summary><div class="grid-list"><div><h3>Real in this demo:</h3><p>X25519 scalar multiplication, SHA-256, HKDF, AES-128-GCM, ExpandWithLabel key-schedule derivations, TreeKEM UpdatePath math, and DHKEM encapsulation/decapsulation.</p></div><div><h3>Simulated for browser context:</h3><p>Delivery service fan-out is in-memory, KeyPackages are generated in-session, and identity keys are session-local.</p></div><div><h3>Not included (out of scope):</h3><p>Ed25519 credential signatures and verification, authenticated handshake framing, construction or verification of confirmation tags, external PSKs, group re-initialization flows, and federated inter-group protocols. Commits and application messages in this teaching model are unsigned.</p></div></div></details>`;
   return root;
@@ -454,7 +454,7 @@ function renderComparisonPanel(): HTMLDivElement {
   const tbody = document.createElement('tbody');
   const rows = [
     ['Group size scaling', 'Pairwise mesh', 'TreeKEM left-balanced tree'],
-    ['Broadcast cost', 'O(n) per sender, O(n²) across the group', 'O(log n) path update'],
+    ['Broadcast cost', 'O(n) per sender, O(n²) across the group', 'O(log n) path height; this model sends O(n) ciphertexts'],
     ['Forward secrecy model', 'Pairwise chains', 'Epoch key schedule'],
     ['PCS model', 'Per-pair recovery', 'Commit-driven group recovery'],
     ['Metadata exposure', 'Per-pair sessions', 'Group context + epochs'],
@@ -809,10 +809,10 @@ function renderAccessPanel(state: GroupStateModel, rerender: () => void, guard: 
 // ── Guided tour ─────────────────────────────────────────────────────────────
 interface TourStep { title: string; body: string; act: string | null; cta?: string; }
 const TOUR: TourStep[] = [
-  { title: 'Welcome to the MLS Group Lab', body: 'You are looking at a real end-to-end encrypted group. Every key below is computed with real X25519, HKDF-SHA256 and AES-128-GCM — nothing is faked. This tour walks through the whole group lifecycle in a few clicks.', act: null, cta: 'Begin ▶' },
-  { title: 'Add a member', body: 'A new member is added and the change is committed. Watch the ratchet tree gain a leaf and the epoch advance. The newcomer gets a Welcome with the current secrets, but cannot read anything sent before they joined.', act: 'add', cta: 'Add & continue ▶' },
+  { title: 'Welcome to the MLS Group Lab', body: 'This unsigned teaching group uses X25519, HKDF-SHA256 and AES-128-GCM. Group membership and message delivery share one browser. This tour walks through the whole group lifecycle in a few clicks.', act: null, cta: 'Begin ▶' },
+  { title: 'Add a member', body: 'A new member is added and the change is committed. Watch the ratchet tree gain a leaf and the epoch advance. The newcomer starts with an empty message history. The lab builds an illustrative Welcome; it does not test decryption of pre-join traffic.', act: 'add', cta: 'Add & continue ▶' },
   { title: 'Send a message', body: 'A member sends an encrypted message and advances their sender ratchet. A recipient with the matching key can still decrypt it. Forward secrecy depends on deleting old key material after use.', act: 'send', cta: 'Send & continue ▶' },
-  { title: 'Re-key with an Update', body: 'A member runs an Update. Watch their direct path light up and climb to the root, and the epoch roll over. Only one root-to-leaf path changes — that is the O(log n) re-key at the heart of TreeKEM.', act: 'update', cta: 'Update & continue ▶' },
+  { title: 'Re-key with an Update', body: 'A member runs an Update. Watch their direct path light up and climb to the root, and the epoch roll over. Only one root-to-leaf path changes. The model encrypts separately to each other active leaf.', act: 'update', cta: 'Update & continue ▶' },
   { title: 'Everyone agrees on the new secret', body: 'That Update just ran the convergence proof below: every member independently arrived at the SAME root secret — the committer by ratcheting, the others by decrypting one path secret. Scroll to the TreeKEM Convergence panel to see the matching values.', act: 'converge', cta: 'Prove it & continue ▶' },
   { title: 'Remove a member', body: 'A member is removed. Their leaf and entire direct path are blanked, then re-keyed by the committer, so the keys they knew are now worthless to them.', act: 'remove', cta: 'Remove & continue ▶' },
   { title: 'The removed member is locked out', body: 'This just ran the access-control demo below: the group sent a fresh message and the removed member failed to decrypt it, while a current member succeeded. See the Access Control panel.', act: 'access', cta: 'Show lockout & continue ▶' },
@@ -1015,7 +1015,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   h1.textContent = 'MLS Group';
   const subtitle = document.createElement('p');
   subtitle.className = 'cl-hero-sub';
-  subtitle.textContent = 'TreeKEM · Key Schedule · RFC 9420';
+  subtitle.textContent = 'Unsigned teaching subset of MLS (RFC 9420)';
   const desc = document.createElement('p');
   desc.className = 'cl-hero-desc';
   desc.textContent =
@@ -1033,7 +1033,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   const whyText = document.createElement('p');
   whyText.className = 'cl-hero-why-text';
   whyText.textContent =
-    'MLS uses a tree to update group keys as members join, leave or update. Explore how key erasure protects past traffic and how a fresh update can restore future secrecy after control of a compromised device is regained.';
+    'MLS uses a tree to update group keys as members join, leave or update. The recovery walkthrough compares copied session secrets before and after an accepted fresh Update. It assumes continued device and signing-key access have ended.';
   why.appendChild(whyLabel);
   why.appendChild(whyText);
 
@@ -1068,7 +1068,7 @@ export function renderApp(root: HTMLDivElement, state: GroupStateModel = createI
   scope.className = 'panel';
   scope.id = 'implementation-scope';
   scope.setAttribute('aria-labelledby', 'implementation-scope-title');
-  scope.innerHTML = `<h2 id="implementation-scope-title">Teaching subset — not a complete RFC 9420 implementation</h2><p>This lab exercises real TreeKEM, X25519, HKDF, and AES-GCM mechanics. It does <strong>not</strong> implement Ed25519 credential signatures, authenticated handshake framing, or confirmation-tag construction and verification; its commits and application messages are unsigned.</p>`;
+  scope.innerHTML = `<h2 id="implementation-scope-title">Teaching subset — not a complete RFC 9420 implementation</h2><p>This lab exercises real TreeKEM, X25519, HKDF, and AES-GCM mechanics. It does <strong>not</strong> implement Ed25519 credential signatures, authenticated handshake framing, or confirmation-tag construction and verification; its commits and application messages are unsigned.</p><p>The simulated Welcome uses the leaf key and the current epoch secret. The browser adds members directly without validating and consuming a separate KeyPackage or erasing a one-time init key. The application sender also uses a local nonce layout, applying a four-byte guard to the last four bytes. The lab omits protected sender data and RFC PrivateMessage decoding.</p>`;
 
   const tree = panel('Ratchet Tree');
   tree.appendChild(renderTreePanel(state, animate, {

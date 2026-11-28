@@ -395,7 +395,7 @@ export function renderTreePanel(
   const caption = document.createElement('p');
   caption.className = 'muted tree-caption';
   caption.textContent = committer !== null && directPathSet.size > 0
-    ? `${memberName(committer)} committed: the highlighted direct path got fresh keys, each sealed (watch the packets fly) only to the copath subtrees — that's the O(log n) update.`
+    ? `${memberName(committer)} committed: the highlighted direct path got fresh keys, and each packet goes to one recipient leaf. The tree path has logarithmic height, while the number of packets grows linearly.`
     : 'Each member is a leaf; parent nodes hold shared keys derivable only by the members below them. Click a node to explore, or commit an Update to watch a direct path light up.';
   wrapper.appendChild(caption);
 
